@@ -59,6 +59,18 @@ var (
 		func() runtime.Object { return &Machine{} },
 		func() runtime.Object { return &MachineList{} },
 	)
+	InternalMachineClass = builders.NewInternalResource(
+		"machineclasses",
+		"MachineClass",
+		func() runtime.Object { return &MachineClass{} },
+		func() runtime.Object { return &MachineClassList{} },
+	)
+	InternalMachineClassStatus = builders.NewInternalResourceStatus(
+		"machineclasses",
+		"MachineClassStatus",
+		func() runtime.Object { return &MachineClass{} },
+		func() runtime.Object { return &MachineClassList{} },
+	)
 	InternalMachineDeployment = builders.NewInternalResource(
 		"machinedeployments",
 		"MachineDeployment",
@@ -89,6 +101,8 @@ var (
 		InternalClusterStatus,
 		InternalMachine,
 		InternalMachineStatus,
+		InternalMachineClass,
+		InternalMachineClassStatus,
 		InternalMachineDeployment,
 		InternalMachineDeploymentStatus,
 		InternalMachineSet,
@@ -118,6 +132,17 @@ func Resource(resource string) schema.GroupResource {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+type MachineSet struct {
+	metav1.TypeMeta
+	metav1.ObjectMeta
+	Spec   MachineSetSpec
+	Status MachineSetStatus
+}
+
+// +genclient
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 type MachineDeployment struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
@@ -125,15 +150,14 @@ type MachineDeployment struct {
 	Status MachineDeploymentStatus
 }
 
-// +genclient
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type Machine struct {
-	metav1.TypeMeta
-	metav1.ObjectMeta
-	Spec   MachineSpec
-	Status MachineStatus
+type MachineSetStatus struct {
+	Replicas             int32
+	FullyLabeledReplicas int32
+	ReadyReplicas        int32
+	AvailableReplicas    int32
+	ObservedGeneration   int64
+	ErrorReason          *clustercommon.MachineSetStatusError
+	ErrorMessage         *string
 }
 
 type MachineDeploymentStatus struct {
@@ -145,15 +169,37 @@ type MachineDeploymentStatus struct {
 	UnavailableReplicas int32
 }
 
-type MachineStatus struct {
-	NodeRef        *corev1.ObjectReference
-	LastUpdated    metav1.Time
-	Versions       *MachineVersionInfo
-	ErrorReason    *clustercommon.MachineStatusError
-	ErrorMessage   *string
-	ProviderStatus *pkgruntime.RawExtension
-	Addresses      []corev1.NodeAddress
-	Conditions     []corev1.NodeCondition
+type MachineDeploymentSpec struct {
+	Replicas                *int32
+	Selector                metav1.LabelSelector
+	Template                MachineTemplateSpec
+	Strategy                MachineDeploymentStrategy
+	MinReadySeconds         *int32
+	RevisionHistoryLimit    *int32
+	Paused                  bool
+	ProgressDeadlineSeconds *int32
+}
+
+type MachineSetSpec struct {
+	Replicas        *int32
+	MinReadySeconds int32
+	Selector        metav1.LabelSelector
+	Template        MachineTemplateSpec
+}
+
+type MachineDeploymentStrategy struct {
+	Type          clustercommon.MachineDeploymentStrategyType
+	RollingUpdate *MachineRollingUpdateDeployment
+}
+
+type MachineTemplateSpec struct {
+	metav1.ObjectMeta
+	Spec MachineSpec
+}
+
+type MachineRollingUpdateDeployment struct {
+	MaxUnavailable *utilintstr.IntOrString
+	MaxSurge       *utilintstr.IntOrString
 }
 
 type MachineSpec struct {
@@ -174,33 +220,44 @@ type ProviderConfig struct {
 	ValueFrom *ProviderConfigSource
 }
 
-type MachineDeploymentSpec struct {
-	Replicas                *int32
-	Selector                metav1.LabelSelector
-	Template                MachineTemplateSpec
-	Strategy                MachineDeploymentStrategy
-	MinReadySeconds         *int32
-	RevisionHistoryLimit    *int32
-	Paused                  bool
-	ProgressDeadlineSeconds *int32
+// +genclient
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type MachineClass struct {
+	metav1.TypeMeta
+	metav1.ObjectMeta
+	Capacity       corev1.ResourceList
+	Allocatable    corev1.ResourceList
+	ProviderConfig pkgruntime.RawExtension
+	Spec           MachineClassSpec
+	Status         MachineClassStatus
 }
 
 type ProviderConfigSource struct {
+	MachineClass *MachineClassRef
 }
 
-type MachineDeploymentStrategy struct {
-	Type          clustercommon.MachineDeploymentStrategyType
-	RollingUpdate *MachineRollingUpdateDeployment
+type MachineClassStatus struct {
 }
 
-type MachineTemplateSpec struct {
+type MachineClassRef struct {
+	Name       string
+	Parameters map[string]string
+}
+
+type MachineClassSpec struct {
+}
+
+// +genclient
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type Machine struct {
+	metav1.TypeMeta
 	metav1.ObjectMeta
-	Spec MachineSpec
-}
-
-type MachineRollingUpdateDeployment struct {
-	MaxUnavailable *utilintstr.IntOrString
-	MaxSurge       *utilintstr.IntOrString
+	Spec   MachineSpec
+	Status MachineStatus
 }
 
 // +genclient
@@ -214,15 +271,15 @@ type Cluster struct {
 	Status ClusterStatus
 }
 
-// +genclient
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type MachineSet struct {
-	metav1.TypeMeta
-	metav1.ObjectMeta
-	Spec   MachineSetSpec
-	Status MachineSetStatus
+type MachineStatus struct {
+	NodeRef        *corev1.ObjectReference
+	LastUpdated    metav1.Time
+	Versions       *MachineVersionInfo
+	ErrorReason    *clustercommon.MachineStatusError
+	ErrorMessage   *string
+	ProviderStatus *pkgruntime.RawExtension
+	Addresses      []corev1.NodeAddress
+	Conditions     []corev1.NodeCondition
 }
 
 type ClusterStatus struct {
@@ -232,26 +289,9 @@ type ClusterStatus struct {
 	ProviderStatus *pkgruntime.RawExtension
 }
 
-type MachineSetStatus struct {
-	Replicas             int32
-	FullyLabeledReplicas int32
-	ReadyReplicas        int32
-	AvailableReplicas    int32
-	ObservedGeneration   int64
-	ErrorReason          *clustercommon.MachineSetStatusError
-	ErrorMessage         *string
-}
-
 type APIEndpoint struct {
 	Host string
 	Port int
-}
-
-type MachineSetSpec struct {
-	Replicas        *int32
-	MinReadySeconds int32
-	Selector        metav1.LabelSelector
-	Template        MachineTemplateSpec
 }
 
 type ClusterSpec struct {
@@ -504,6 +544,126 @@ func (s *storageMachine) UpdateMachine(ctx request.Context, object *Machine) (*M
 }
 
 func (s *storageMachine) DeleteMachine(ctx request.Context, id string) (bool, error) {
+	st := s.GetStandardStorage()
+	_, sync, err := st.Delete(ctx, id, nil)
+	return sync, err
+}
+
+//
+// MachineClass Functions and Structs
+//
+// +k8s:deepcopy-gen=false
+type MachineClassStrategy struct {
+	builders.DefaultStorageStrategy
+}
+
+// +k8s:deepcopy-gen=false
+type MachineClassStatusStrategy struct {
+	builders.DefaultStatusStorageStrategy
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type MachineClassList struct {
+	metav1.TypeMeta
+	metav1.ListMeta
+	Items []MachineClass
+}
+
+func (MachineClass) NewStatus() interface{} {
+	return MachineClassStatus{}
+}
+
+func (pc *MachineClass) GetStatus() interface{} {
+	return pc.Status
+}
+
+func (pc *MachineClass) SetStatus(s interface{}) {
+	pc.Status = s.(MachineClassStatus)
+}
+
+func (pc *MachineClass) GetSpec() interface{} {
+	return pc.Spec
+}
+
+func (pc *MachineClass) SetSpec(s interface{}) {
+	pc.Spec = s.(MachineClassSpec)
+}
+
+func (pc *MachineClass) GetObjectMeta() *metav1.ObjectMeta {
+	return &pc.ObjectMeta
+}
+
+func (pc *MachineClass) SetGeneration(generation int64) {
+	pc.ObjectMeta.Generation = generation
+}
+
+func (pc MachineClass) GetGeneration() int64 {
+	return pc.ObjectMeta.Generation
+}
+
+// Registry is an interface for things that know how to store MachineClass.
+// +k8s:deepcopy-gen=false
+type MachineClassRegistry interface {
+	ListMachineClasss(ctx request.Context, options *internalversion.ListOptions) (*MachineClassList, error)
+	GetMachineClass(ctx request.Context, id string, options *metav1.GetOptions) (*MachineClass, error)
+	CreateMachineClass(ctx request.Context, id *MachineClass) (*MachineClass, error)
+	UpdateMachineClass(ctx request.Context, id *MachineClass) (*MachineClass, error)
+	DeleteMachineClass(ctx request.Context, id string) (bool, error)
+}
+
+// NewRegistry returns a new Registry interface for the given Storage. Any mismatched types will panic.
+func NewMachineClassRegistry(sp builders.StandardStorageProvider) MachineClassRegistry {
+	return &storageMachineClass{sp}
+}
+
+// Implement Registry
+// storage puts strong typing around storage calls
+// +k8s:deepcopy-gen=false
+type storageMachineClass struct {
+	builders.StandardStorageProvider
+}
+
+func (s *storageMachineClass) ListMachineClasss(ctx request.Context, options *internalversion.ListOptions) (*MachineClassList, error) {
+	if options != nil && options.FieldSelector != nil && !options.FieldSelector.Empty() {
+		return nil, fmt.Errorf("field selector not supported yet")
+	}
+	st := s.GetStandardStorage()
+	obj, err := st.List(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	return obj.(*MachineClassList), err
+}
+
+func (s *storageMachineClass) GetMachineClass(ctx request.Context, id string, options *metav1.GetOptions) (*MachineClass, error) {
+	st := s.GetStandardStorage()
+	obj, err := st.Get(ctx, id, options)
+	if err != nil {
+		return nil, err
+	}
+	return obj.(*MachineClass), nil
+}
+
+func (s *storageMachineClass) CreateMachineClass(ctx request.Context, object *MachineClass) (*MachineClass, error) {
+	st := s.GetStandardStorage()
+	obj, err := st.Create(ctx, object, nil, true)
+	if err != nil {
+		return nil, err
+	}
+	return obj.(*MachineClass), nil
+}
+
+func (s *storageMachineClass) UpdateMachineClass(ctx request.Context, object *MachineClass) (*MachineClass, error) {
+	st := s.GetStandardStorage()
+	obj, _, err := st.Update(ctx, object.Name, rest.DefaultUpdatedObjectInfo(object), nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return obj.(*MachineClass), nil
+}
+
+func (s *storageMachineClass) DeleteMachineClass(ctx request.Context, id string) (bool, error) {
 	st := s.GetStandardStorage()
 	_, sync, err := st.Delete(ctx, id, nil)
 	return sync, err

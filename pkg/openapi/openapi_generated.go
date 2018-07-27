@@ -23576,6 +23576,218 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 			Dependencies: []string{
 				"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta", "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineSpec", "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineStatus"},
 		},
+		"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClass": {
+			Schema: spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Description: "MachineClass can be used to templatize and re-use provider configuration across multiple Machines / MachineSets / MachineDeployments.",
+					Properties: map[string]spec.Schema{
+						"kind": {
+							SchemaProps: spec.SchemaProps{
+								Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds",
+								Type:        []string{"string"},
+								Format:      "",
+							},
+						},
+						"apiVersion": {
+							SchemaProps: spec.SchemaProps{
+								Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources",
+								Type:        []string{"string"},
+								Format:      "",
+							},
+						},
+						"metadata": {
+							SchemaProps: spec.SchemaProps{
+								Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							},
+						},
+						"capacity": {
+							SchemaProps: spec.SchemaProps{
+								Description: "The total capacity available on this machine type (cpu/memory/disk).\n\nWARNING: It is up to the creator of the MachineClass to ensure that this field is consistent with the underlying machine that will be provisioned when this class is used, to inform higher level automation (e.g. the cluster autoscaler).",
+								Type:        []string{"object"},
+								AdditionalProperties: &spec.SchemaOrBool{
+									Schema: &spec.Schema{
+										SchemaProps: spec.SchemaProps{
+											Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+										},
+									},
+								},
+							},
+						},
+						"allocatable": {
+							SchemaProps: spec.SchemaProps{
+								Description: "How much capacity is actually allocatable on this machine. Must be equal to or less than the capacity, and when less indicates the resources reserved for system overhead.\n\nWARNING: It is up to the creator of the MachineClass to ensure that this field is consistent with the underlying machine that will be provisioned when this class is used, to inform higher level automation (e.g. the cluster autoscaler).",
+								Type:        []string{"object"},
+								AdditionalProperties: &spec.SchemaOrBool{
+									Schema: &spec.Schema{
+										SchemaProps: spec.SchemaProps{
+											Ref: ref("k8s.io/apimachinery/pkg/api/resource.Quantity"),
+										},
+									},
+								},
+							},
+						},
+						"providerConfig": {
+							SchemaProps: spec.SchemaProps{
+								Description: "Provider-specific configuration to use during node creation.",
+								Ref:         ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
+							},
+						},
+						"spec": {
+							SchemaProps: spec.SchemaProps{
+								Description: "supports code-generation for types which do not have a spec or status.",
+								Ref:         ref("sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassSpec"),
+							},
+						},
+						"status": {
+							SchemaProps: spec.SchemaProps{
+								Ref: ref("sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassStatus"),
+							},
+						},
+					},
+					Required: []string{"capacity", "allocatable", "providerConfig"},
+				},
+			},
+			Dependencies: []string{
+				"k8s.io/apimachinery/pkg/api/resource.Quantity", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta", "k8s.io/apimachinery/pkg/runtime.RawExtension", "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassSpec", "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassStatus"},
+		},
+		"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassList": {
+			Schema: spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Properties: map[string]spec.Schema{
+						"kind": {
+							SchemaProps: spec.SchemaProps{
+								Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds",
+								Type:        []string{"string"},
+								Format:      "",
+							},
+						},
+						"apiVersion": {
+							SchemaProps: spec.SchemaProps{
+								Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources",
+								Type:        []string{"string"},
+								Format:      "",
+							},
+						},
+						"metadata": {
+							SchemaProps: spec.SchemaProps{
+								Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							},
+						},
+						"items": {
+							SchemaProps: spec.SchemaProps{
+								Type: []string{"array"},
+								Items: &spec.SchemaOrArray{
+									Schema: &spec.Schema{
+										SchemaProps: spec.SchemaProps{
+											Ref: ref("sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClass"),
+										},
+									},
+								},
+							},
+						},
+					},
+					Required: []string{"items"},
+				},
+			},
+			Dependencies: []string{
+				"k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta", "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClass"},
+		},
+		"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassRef": {
+			Schema: spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Properties: map[string]spec.Schema{
+						"Name": {
+							SchemaProps: spec.SchemaProps{
+								Description: "The name of the MachineClass.",
+								Type:        []string{"string"},
+								Format:      "",
+							},
+						},
+						"Parameters": {
+							SchemaProps: spec.SchemaProps{
+								Description: "Parameters allow basic substitution to be applied to a MachineClass (where supported). Keys must not be empty. The maximum number of parameters is 512, with a cumulative max size of 256K.",
+								Type:        []string{"object"},
+								AdditionalProperties: &spec.SchemaOrBool{
+									Schema: &spec.Schema{
+										SchemaProps: spec.SchemaProps{
+											Type:   []string{"string"},
+											Format: "",
+										},
+									},
+								},
+							},
+						},
+					},
+					Required: []string{"Name"},
+				},
+			},
+			Dependencies: []string{},
+		},
+		"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassSchemeFns": {
+			Schema: spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Description: "MachineClass Functions and Structs",
+					Properties: map[string]spec.Schema{
+						"DefaultSchemeFns": {
+							SchemaProps: spec.SchemaProps{
+								Ref: ref("github.com/kubernetes-incubator/apiserver-builder/pkg/builders.DefaultSchemeFns"),
+							},
+						},
+					},
+					Required: []string{"DefaultSchemeFns"},
+				},
+			},
+			Dependencies: []string{
+				"github.com/kubernetes-incubator/apiserver-builder/pkg/builders.DefaultSchemeFns"},
+		},
+		"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassSpec": {
+			Schema: spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Properties: map[string]spec.Schema{},
+				},
+			},
+			Dependencies: []string{},
+		},
+		"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassStatus": {
+			Schema: spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Properties: map[string]spec.Schema{},
+				},
+			},
+			Dependencies: []string{},
+		},
+		"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassStatusStrategy": {
+			Schema: spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Properties: map[string]spec.Schema{
+						"DefaultStatusStorageStrategy": {
+							SchemaProps: spec.SchemaProps{
+								Ref: ref("github.com/kubernetes-incubator/apiserver-builder/pkg/builders.DefaultStatusStorageStrategy"),
+							},
+						},
+					},
+					Required: []string{"DefaultStatusStorageStrategy"},
+				},
+			},
+			Dependencies: []string{
+				"github.com/kubernetes-incubator/apiserver-builder/pkg/builders.DefaultStatusStorageStrategy"},
+		},
+		"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassStrategy": {
+			Schema: spec.Schema{
+				SchemaProps: spec.SchemaProps{
+					Properties: map[string]spec.Schema{
+						"DefaultStorageStrategy": {
+							SchemaProps: spec.SchemaProps{
+								Ref: ref("github.com/kubernetes-incubator/apiserver-builder/pkg/builders.DefaultStorageStrategy"),
+							},
+						},
+					},
+					Required: []string{"DefaultStorageStrategy"},
+				},
+			},
+			Dependencies: []string{
+				"github.com/kubernetes-incubator/apiserver-builder/pkg/builders.DefaultStorageStrategy"},
+		},
 		"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineDeployment": {
 			Schema: spec.Schema{
 				SchemaProps: spec.SchemaProps{
@@ -24263,7 +24475,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 						},
 						"conditions": {
 							SchemaProps: spec.SchemaProps{
-								Description: "List of conditions synced from the node-conditions of the corresponding node-object. Machine-controller would be responsible for keeping conditions up-to-date. Machine-set controller will be taking these conditions as a signal to decide if machine is healthy or needs to be replaced. Refer: https://kubernetes.io/docs/concepts/architecture/nodes/#condition",
+								Description: "List of conditions synced from the node conditions of the corresponding node-object. Machine-controller is responsible for keeping conditions up-to-date. MachineSet controller will be taking these conditions as a signal to decide if machine is healthy or needs to be replaced. Refer: https://kubernetes.io/docs/concepts/architecture/nodes/#condition",
 								Type:        []string{"array"},
 								Items: &spec.SchemaOrArray{
 									Schema: &spec.Schema{
@@ -24411,10 +24623,18 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 			Schema: spec.Schema{
 				SchemaProps: spec.SchemaProps{
 					Description: "ProviderConfigSource represents a source for the provider-specific resource configuration.",
-					Properties:  map[string]spec.Schema{},
+					Properties: map[string]spec.Schema{
+						"MachineClass": {
+							SchemaProps: spec.SchemaProps{
+								Description: "The machine class from which the provider config should be sourced.",
+								Ref:         ref("sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassRef"),
+							},
+						},
+					},
 				},
 			},
-			Dependencies: []string{},
+			Dependencies: []string{
+				"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1.MachineClassRef"},
 		},
 	}
 }
