@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2018 The Kubernetes authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,36 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 package v1alpha1
 
 import (
-	"log"
-
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apiserver/pkg/endpoints/request"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation/field"
+
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	"k8s.io/apimachinery/pkg/labels"
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster"
-	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 )
-
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// MachineSet ensures that a specified number of machines replicas are running at any given time.
-// +k8s:openapi-gen=true
-// +resource:path=machinesets,strategy=MachineSetStrategy
-type MachineSet struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   MachineSetSpec   `json:"spec,omitempty"`
-	Status MachineSetStatus `json:"status,omitempty"`
-}
 
 // MachineSetSpec defines the desired state of MachineSet
 type MachineSetSpec struct {
@@ -128,41 +105,28 @@ type MachineSetStatus struct {
 	ErrorMessage *string `json:"errorMessage,omitempty"`
 }
 
-// Validate checks that an instance of MachineSet is well formed
-func (MachineSetStrategy) Validate(ctx request.Context, obj runtime.Object) field.ErrorList {
-	machineSet := obj.(*cluster.MachineSet)
-	errors := field.ErrorList{}
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-	// validate spec.selector and spec.template.labels
-	fldPath := field.NewPath("spec")
-	errors = append(errors, metav1validation.ValidateLabelSelector(&machineSet.Spec.Selector, fldPath.Child("selector"))...)
-	if len(machineSet.Spec.Selector.MatchLabels)+len(machineSet.Spec.Selector.MatchExpressions) == 0 {
-		errors = append(errors, field.Invalid(fldPath.Child("selector"), machineSet.Spec.Selector, "empty selector is not valid for MachineSet."))
-	}
-	selector, err := metav1.LabelSelectorAsSelector(&machineSet.Spec.Selector)
-	if err != nil {
-		errors = append(errors, field.Invalid(fldPath.Child("selector"), machineSet.Spec.Selector, "invalid label selector."))
-	} else {
-		labels := labels.Set(machineSet.Spec.Template.Labels)
-		if !selector.Matches(labels) {
-			errors = append(errors, field.Invalid(fldPath.Child("template","metadata","labels"), machineSet.Spec.Template.Labels, "`selector` does not match template `labels`"))
-		}
-	}
+// MachineSet is the Schema for the machinesets API
+// +k8s:openapi-gen=true
+type MachineSet struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	return errors
+	Spec   MachineSetSpec   `json:"spec,omitempty"`
+	Status MachineSetStatus `json:"status,omitempty"`
 }
 
-// DefaultingFunction sets default MachineSet field values
-func (MachineSetSchemeFns) DefaultingFunction(o interface{}) {
-	obj := o.(*MachineSet)
-	log.Printf("Defaulting fields for MachineSet %s\n", obj.Name)
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-	if obj.Spec.Replicas == nil {
-		obj.Spec.Replicas = new(int32)
-		*obj.Spec.Replicas = 1
-	}
+// MachineSetList contains a list of MachineSet
+type MachineSetList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []MachineSet `json:"items"`
+}
 
-	if len(obj.Namespace) == 0 {
-		obj.Namespace = metav1.NamespaceDefault
-	}
+func init() {
+	SchemeBuilder.Register(&MachineSet{}, &MachineSetList{})
 }

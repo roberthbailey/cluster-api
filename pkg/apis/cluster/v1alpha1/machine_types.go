@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2018 The Kubernetes authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,35 +17,15 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"log"
-
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apiserver/pkg/endpoints/request"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/apimachinery/pkg/runtime"
 
-	"sigs.k8s.io/cluster-api/pkg/apis/cluster"
-	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
+	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 )
 
-// Finalizer is set on PreareForCreate callback
-const MachineFinalizer string = "machine.cluster.k8s.io"
-
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// Machine
-// +k8s:openapi-gen=true
-// +resource:path=machines,strategy=MachineStrategy
-type Machine struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   MachineSpec   `json:"spec,omitempty"`
-	Status MachineStatus `json:"status,omitempty"`
-}
+// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
+// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // MachineSpec defines the desired state of Machine
 type MachineSpec struct {
@@ -128,7 +108,7 @@ type MachineStatus struct {
 	// can be added as events to the Machine object and/or logged in the
 	// controller's output.
 	// +optional
-	ErrorReason *clustercommon.MachineStatusError `json:"errorReason,omitempty"`
+	ErrorReason *common.MachineStatusError `json:"errorReason,omitempty"`
 	// +optional
 	ErrorMessage *string `json:"errorMessage,omitempty"`
 
@@ -162,28 +142,28 @@ type MachineVersionInfo struct {
 	ControlPlane string `json:"controlPlane,omitempty"`
 }
 
-// Validate checks that an instance of Machine is well formed
-func (MachineStrategy) Validate(ctx request.Context, obj runtime.Object) field.ErrorList {
-	machine := obj.(*cluster.Machine)
-	log.Printf("Validating fields for Machine %s\n", machine.Name)
-	errors := field.ErrorList{}
-	// perform validation here and add to errors using field.Invalid
-	return errors
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Machine is the Schema for the machines API
+// +k8s:openapi-gen=true
+type Machine struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   MachineSpec   `json:"spec,omitempty"`
+	Status MachineStatus `json:"status,omitempty"`
 }
 
-// PrepareForCreate clears fields that are not allowed to be set by end users on creation.
-func (m MachineStrategy) PrepareForCreate(ctx request.Context, obj runtime.Object) {
-	// Invoke the parent implementation to strip the Status
-	m.DefaultStorageStrategy.PrepareForCreate(ctx, obj)
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-	// Cast the element and set finalizer
-	o := obj.(*cluster.Machine)
-	o.ObjectMeta.Finalizers = append(o.ObjectMeta.Finalizers, MachineFinalizer)
+// MachineList contains a list of Machine
+type MachineList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []Machine `json:"items"`
 }
 
-// DefaultingFunction sets default Machine field values
-func (MachineSchemeFns) DefaultingFunction(o interface{}) {
-	obj := o.(*Machine)
-	// set default field values here
-	log.Printf("Defaulting fields for Machine %s\n", obj.Name)
+func init() {
+	SchemeBuilder.Register(&Machine{}, &MachineList{})
 }
