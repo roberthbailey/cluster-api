@@ -18,40 +18,50 @@ package machine
 
 import (
 	"context"
-	"log"
-	"reflect"
+	"errors"
+	"os"
 
-	appsv1 "k8s.io/api/apps/v1"
+	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"sigs.k8s.io/cluster-api/pkg/util"
 )
 
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
+const NodeNameEnvVar = "NODE_NAME"
 
-// Add creates a new Machine Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
-// USER ACTION REQUIRED: update cmd/manager/main.go to call this cluster.Add(mgr) to install this Controller
+var DefaultActuator Actuator
+
+// Add creates a new Machine Controller and adds it to the Manager with default RBAC.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	return AddWithActuator(mgr, DefaultActuator)
+}
+
+func AddWithActuator(mgr manager.Manager, actuator Actuator) error {
+	return add(mgr, newReconciler(mgr, actuator))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileMachine{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+func newReconciler(mgr manager.Manager, actuator Actuator) reconcile.Reconciler {
+	r := &ReconcileMachine{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	r.nodeName = os.Getenv(NodeNameEnvVar)
+	r.linkedNodes = make(map[string]bool)
+	r.cachedReadiness = make(map[string]bool)
+	r.actuator = actuator
+
+	if r.nodeName == "" {
+		glog.Warningf("environment variable %v is not set, this controller will not protect against deleting its own machine", NodeNameEnvVar)
+	}
+
+	return r
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -63,17 +73,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to Machine
-	err = c.Watch(&source.Kind{Type: &clusterv1alpha1.Machine{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
-
-	// TODO(user): Modify this to be the types you create
-	// Uncomment watch a Deployment created by Machine - change this for objects you create
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &clusterv1alpha1.Machine{},
-	})
+	err = c.Watch(&source.Kind{Type: &clusterv1.Machine{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -87,21 +87,25 @@ var _ reconcile.Reconciler = &ReconcileMachine{}
 type ReconcileMachine struct {
 	client.Client
 	scheme *runtime.Scheme
+
+	linkedNodes     map[string]bool
+	cachedReadiness map[string]bool
+	actuator        Actuator
+
+	// nodeName is the name of the node on which the machine controller is running, if not present, it is loaded from NODE_NAME.
+	nodeName string
 }
 
 // Reconcile reads that state of the cluster for a Machine object and makes changes based on the state read
 // and what is in the Machine.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
-// a Deployment as an example
-// Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cluster.k8s.io,resources=machines,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileMachine) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the Machine instance
-	instance := &clusterv1alpha1.Machine{}
-	err := r.Get(context.TODO(), request.NamespacedName, instance)
+	m := &clusterv1.Machine{}
+	err := r.Get(context.Background(), request.NamespacedName, m)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
@@ -110,57 +114,120 @@ func (r *ReconcileMachine) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this to be the object type created by your controller
-	// Define the desired Deployment object
-	deploy := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-deployment",
-			Namespace: instance.Namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx",
-						},
-					},
-				},
-			},
-		},
+	// Implement controller logic here
+	name := m.Name
+	glog.Infof("Running reconcile Machine for %s\n", name)
+
+	if !m.ObjectMeta.DeletionTimestamp.IsZero() {
+		// no-op if finalizer has been removed.
+		if !util.Contains(m.ObjectMeta.Finalizers, clusterv1.MachineFinalizer) {
+			glog.Infof("reconciling machine object %v causes a no-op as there is no finalizer.", name)
+			return reconcile.Result{}, nil
+		}
+		if !r.isDeleteAllowed(m) {
+			glog.Infof("Skipping reconciling of machine object %v", name)
+			return reconcile.Result{}, nil
+		}
+		glog.Infof("reconciling machine object %v triggers delete.", name)
+		if err := r.delete(m); err != nil {
+			glog.Errorf("Error deleting machine object %v; %v", name, err)
+			return reconcile.Result{}, err
+		}
+
+		// Remove finalizer on successful deletion.
+		glog.Infof("machine object %v deletion successful, removing finalizer.", name)
+		m.ObjectMeta.Finalizers = util.Filter(m.ObjectMeta.Finalizers, clusterv1.MachineFinalizer)
+		if err := r.Client.Update(context.Background(), m); err != nil {
+			glog.Errorf("Error removing finalizer from machine object %v; %v", name, err)
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
 	}
-	if err := controllerutil.SetControllerReference(instance, deploy, r.scheme); err != nil {
+
+	cluster, err := r.getCluster(m)
+	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this for the object type created by your controller
-	// Check if the Deployment already exists
-	found := &appsv1.Deployment{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Printf("Creating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
-		err = r.Create(context.TODO(), deploy)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
+	exist, err := r.actuator.Exists(cluster, m)
+	if err != nil {
+		glog.Errorf("Error checking existence of machine instance for machine object %v; %v", name, err)
 		return reconcile.Result{}, err
 	}
-
-	// TODO(user): Change this for the object type created by your controller
-	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(deploy.Spec, found.Spec) {
-		found.Spec = deploy.Spec
-		log.Printf("Updating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
-		err = r.Update(context.TODO(), found)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
+	if exist {
+		glog.Infof("Reconciling machine object %v triggers idempotent update.", name)
+		return reconcile.Result{}, r.update(m)
+	}
+	// Machine resource created. Machine does not yet exist.
+	glog.Infof("Reconciling machine object %v triggers idempotent create.", m.ObjectMeta.Name)
+	if err := r.create(m); err != nil {
+		glog.Warningf("unable to create machine %v: %v", name, err)
+		return reconcile.Result{}, err
 	}
 	return reconcile.Result{}, nil
+}
+
+func (c *ReconcileMachine) create(machine *clusterv1.Machine) error {
+	cluster, err := c.getCluster(machine)
+	if err != nil {
+		return err
+	}
+
+	return c.actuator.Create(cluster, machine)
+}
+
+func (c *ReconcileMachine) update(new_machine *clusterv1.Machine) error {
+	cluster, err := c.getCluster(new_machine)
+	if err != nil {
+		return err
+	}
+
+	// TODO: Assume single master for now.
+	// TODO: Assume we never change the role for the machines. (Master->Node, Node->Master, etc)
+	return c.actuator.Update(cluster, new_machine)
+}
+
+func (c *ReconcileMachine) delete(machine *clusterv1.Machine) error {
+	cluster, err := c.getCluster(machine)
+	if err != nil {
+		return err
+	}
+
+	return c.actuator.Delete(cluster, machine)
+}
+
+func (c *ReconcileMachine) getCluster(machine *clusterv1.Machine) (*clusterv1.Cluster, error) {
+	clusterList := clusterv1.ClusterList{}
+	err := c.Client.List(context.Background(), &client.ListOptions{Namespace: machine.Namespace}, &clusterList)
+	if err != nil {
+		return nil, err
+	}
+
+	switch len(clusterList.Items) {
+	case 0:
+		return nil, errors.New("no clusters defined")
+	case 1:
+		return &clusterList.Items[0], nil
+	default:
+		return nil, errors.New("multiple clusters defined")
+	}
+}
+
+func (c *ReconcileMachine) isDeleteAllowed(machine *clusterv1.Machine) bool {
+	if c.nodeName == "" || machine.Status.NodeRef == nil {
+		return true
+	}
+	if machine.Status.NodeRef.Name != c.nodeName {
+		return true
+	}
+	node := &corev1.Node{}
+	err := c.Client.Get(context.Background(), client.ObjectKey{Namespace: "", Name: c.nodeName}, node)
+	if err != nil {
+		glog.Infof("unable to determine if controller's node is associated with machine '%v', error getting node named '%v': %v", machine.Name, c.nodeName, err)
+		return true
+	}
+	// When the UID of the machine's node reference and this controller's actual node match then then the request is to
+	// delete the machine this machine-controller is running on. Return false to not allow machine controller to delete its
+	// own machine.
+	return node.UID != machine.Status.NodeRef.UID
 }

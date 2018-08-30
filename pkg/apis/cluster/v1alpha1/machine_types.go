@@ -24,8 +24,8 @@ import (
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// Finalizer is set on PreareForCreate callback
+const MachineFinalizer = "machine.cluster.k8s.io"
 
 // MachineSpec defines the desired state of Machine
 type MachineSpec struct {
