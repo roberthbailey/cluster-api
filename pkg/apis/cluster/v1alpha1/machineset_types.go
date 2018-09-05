@@ -123,19 +123,6 @@ type MachineSetStatus struct {
 	ErrorMessage *string `json:"errorMessage,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// MachineSetList contains a list of MachineSet
-type MachineSetList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []MachineSet `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&MachineSet{}, &MachineSetList{})
-}
-
 func (machineSet *MachineSet) Validate() field.ErrorList {
 	errors := field.ErrorList{}
 
@@ -170,4 +157,17 @@ func (obj *MachineSet) Default() {
 	if len(obj.Namespace) == 0 {
 		obj.Namespace = metav1.NamespaceDefault
 	}
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// MachineSetList contains a list of MachineSet
+type MachineSetList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []MachineSet `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&MachineSet{}, &MachineSetList{})
 }

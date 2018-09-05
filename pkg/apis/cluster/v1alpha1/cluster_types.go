@@ -104,19 +104,6 @@ type APIEndpoint struct {
 	Port int `json:"port"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// ClusterList contains a list of Cluster
-type ClusterList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Cluster `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Cluster{}, &ClusterList{})
-}
-
 func (o *Cluster) Validate() field.ErrorList {
 	errors := field.ErrorList{}
 	// perform validation here and add to errors using field.Invalid
@@ -139,4 +126,17 @@ func (o *Cluster) Validate() field.ErrorList {
 			"invalid cluster configuration: missing Cluster.Spec.ClusterNetwork.Services"))
 	}
 	return errors
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ClusterList contains a list of Cluster
+type ClusterList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []Cluster `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&Cluster{}, &ClusterList{})
 }
