@@ -30,7 +30,7 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MachineSet is the Schema for the machinesets API
+// MachineSet ensures that a specified number of machines replicas are running at any given time.
 // +k8s:openapi-gen=true
 type MachineSet struct {
 	metav1.TypeMeta   `json:",inline"`
