@@ -27,6 +27,19 @@ import (
 // Finalizer is set on PreareForCreate callback
 const MachineFinalizer = "machine.cluster.k8s.io"
 
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Machine is the Schema for the machines API
+// +k8s:openapi-gen=true
+type Machine struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   MachineSpec   `json:"spec,omitempty"`
+	Status MachineStatus `json:"status,omitempty"`
+}
+
 // MachineSpec defines the desired state of Machine
 type MachineSpec struct {
 	// This ObjectMeta will autopopulate the Node created. Use this to
@@ -140,19 +153,6 @@ type MachineVersionInfo struct {
 	// master.
 	// +optional
 	ControlPlane string `json:"controlPlane,omitempty"`
-}
-
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// Machine is the Schema for the machines API
-// +k8s:openapi-gen=true
-type Machine struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   MachineSpec   `json:"spec,omitempty"`
-	Status MachineStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
