@@ -17,10 +17,10 @@ limitations under the License.
 package controller
 
 import (
-	"sigs.k8s.io/cluster-api/pkg/controller/cluster"
+	"sigs.k8s.io/cluster-api/pkg/controller/node"
 )
 
 func init() {
 	// AddToManagerFuncs is a list of functions to create controllers and add them to a manager.
-	AddToManagerFuncs = append(AddToManagerFuncs, cluster.Add)
+	AddToManagerFuncs = append(AddToManagerFuncs, node.Add)
 }

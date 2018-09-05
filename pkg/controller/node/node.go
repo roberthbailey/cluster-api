@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package machine
+package node
 
 import (
 	"github.com/golang/glog"
@@ -25,7 +25,6 @@ import (
 
 	"context"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/controller/noderefutil"
 	"sigs.k8s.io/cluster-api/pkg/util"
@@ -44,7 +43,7 @@ const (
 //
 // Currently, these annotations are added by the node itself as part of its
 // bootup script after "kubeadm join" succeeds.
-func (c *ReconcileMachine) link(node *corev1.Node) error {
+func (c *ReconcileNode) link(node *corev1.Node) error {
 	nodeReady := noderefutil.IsNodeReady(node)
 
 	// skip update if cached and no change in readiness.
@@ -86,7 +85,7 @@ func (c *ReconcileMachine) link(node *corev1.Node) error {
 	return err
 }
 
-func (c *ReconcileMachine) unlink(node *corev1.Node) error {
+func (c *ReconcileNode) unlink(node *corev1.Node) error {
 	val, ok := node.ObjectMeta.Annotations[machineAnnotationKey]
 	if !ok {
 		return nil
@@ -130,31 +129,6 @@ func (c *ReconcileMachine) unlink(node *corev1.Node) error {
 		delete(c.linkedNodes, node.ObjectMeta.Name)
 	}
 	return err
-}
-
-// reconcileNode is serialized by an internal queue. It has built-in rated limited retry logic.
-// So as long as the reconcile loop return an error, the processing queue will retry the
-// reconciliation.
-func (c *ReconcileMachine) reconcileNode(key string) error {
-	_, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		return err
-	}
-
-	n := &corev1.Node{}
-	if err = c.Client.Get(context.Background(), client.ObjectKey{Namespace: "", Name: name}, n); err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		glog.Errorf("Unable to retrieve Node %v from store: %v", key, err)
-		return err
-	}
-
-	if n.DeletionTimestamp.IsZero() {
-		return c.link(n)
-	} else {
-		return c.unlink(n)
-	}
 }
 
 func objectRef(node *corev1.Node) *corev1.ObjectReference {

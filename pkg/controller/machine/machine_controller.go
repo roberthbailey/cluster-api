@@ -53,8 +53,6 @@ func AddWithActuator(mgr manager.Manager, actuator Actuator) error {
 func newReconciler(mgr manager.Manager, actuator Actuator) reconcile.Reconciler {
 	r := &ReconcileMachine{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
 	r.nodeName = os.Getenv(NodeNameEnvVar)
-	r.linkedNodes = make(map[string]bool)
-	r.cachedReadiness = make(map[string]bool)
 	r.actuator = actuator
 
 	if r.nodeName == "" {
@@ -88,9 +86,7 @@ type ReconcileMachine struct {
 	client.Client
 	scheme *runtime.Scheme
 
-	linkedNodes     map[string]bool
-	cachedReadiness map[string]bool
-	actuator        Actuator
+	actuator Actuator
 
 	// nodeName is the name of the node on which the machine controller is running, if not present, it is loaded from NODE_NAME.
 	nodeName string
@@ -99,7 +95,6 @@ type ReconcileMachine struct {
 // Reconcile reads that state of the cluster for a Machine object and makes changes based on the state read
 // and what is in the Machine.Spec
 // +kubebuilder:rbac:groups=cluster.k8s.io,resources=machines,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileMachine) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the Machine instance
 	m := &clusterv1.Machine{}
