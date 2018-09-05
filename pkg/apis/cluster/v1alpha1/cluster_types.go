@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 )
 
@@ -114,4 +115,28 @@ type ClusterList struct {
 
 func init() {
 	SchemeBuilder.Register(&Cluster{}, &ClusterList{})
+}
+
+func (o *Cluster) Validate() field.ErrorList {
+	errors := field.ErrorList{}
+	// perform validation here and add to errors using field.Invalid
+	if o.Spec.ClusterNetwork.ServiceDomain == "" {
+		errors = append(errors, field.Invalid(
+			field.NewPath("Spec", "ClusterNetwork", "ServiceDomain"),
+			o.Spec.ClusterNetwork.ServiceDomain,
+			"invalid cluster configuration: missing Cluster.Spec.ClusterNetwork.ServiceDomain"))
+	}
+	if len(o.Spec.ClusterNetwork.Pods.CIDRBlocks) == 0 {
+		errors = append(errors, field.Invalid(
+			field.NewPath("Spec", "ClusterNetwork", "Pods"),
+			o.Spec.ClusterNetwork.Pods,
+			"invalid cluster configuration: missing Cluster.Spec.ClusterNetwork.Pods"))
+	}
+	if len(o.Spec.ClusterNetwork.Services.CIDRBlocks) == 0 {
+		errors = append(errors, field.Invalid(
+			field.NewPath("Spec", "ClusterNetwork", "Services"),
+			o.Spec.ClusterNetwork.Services,
+			"invalid cluster configuration: missing Cluster.Spec.ClusterNetwork.Services"))
+	}
+	return errors
 }
