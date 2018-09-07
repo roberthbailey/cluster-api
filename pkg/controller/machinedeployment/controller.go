@@ -145,7 +145,7 @@ func (r *ReconcileMachineDeployment) getMachineSetsForDeployment(d *clusterv1alp
 	// TODO: flush out machine set adoption.
 
 	var filteredMS []*clusterv1alpha1.MachineSet
-	for idx, _ := range machineSets.Items {
+	for idx := range machineSets.Items {
 		ms := &machineSets.Items[idx]
 		if metav1.GetControllerOf(ms) == nil || (metav1.GetControllerOf(ms) != nil && !metav1.IsControlledBy(ms, d)) {
 			glog.V(4).Infof("%s not controlled by %v", ms.Name, d.Name)
@@ -193,7 +193,7 @@ func (r *ReconcileMachineDeployment) getMachineMapForDeployment(d *clusterv1alph
 	for _, ms := range msList {
 		machineMap[ms.UID] = &clusterv1alpha1.MachineList{}
 	}
-	for idx, _ := range machines.Items {
+	for idx := range machines.Items {
 		machine := &machines.Items[idx]
 		// Do not ignore inactive Machines because Recreate Deployments need to verify that no
 		// Machines from older versions are running before spinning up new Machines.
