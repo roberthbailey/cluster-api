@@ -50,7 +50,8 @@ func TestReconcile(t *testing.T) {
 	c = mgr.GetClient()
 
 	recFn, requests := SetupTestReconcile(newReconciler(mgr))
-	g.Expect(add(mgr, recFn)).NotTo(gomega.HaveOccurred())
+	r := &ReconcileMachineDeployment{}
+	g.Expect(add(mgr, recFn, r.MachineSetToDeployments)).NotTo(gomega.HaveOccurred())
 	defer close(StartTestManager(mgr, g))
 
 	// Create the MachineDeployment object and expect the Reconcile and Deployment to be created
