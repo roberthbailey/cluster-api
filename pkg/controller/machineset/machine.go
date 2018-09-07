@@ -40,9 +40,10 @@ func (c *ReconcileMachineSet) getMachineSetsForMachine(m *v1alpha1.Machine) []*v
 	}
 
 	var mss []*v1alpha1.MachineSet
-	for _, ms := range msList.Items {
-		if hasMatchingLabels(&ms, m) {
-			mss = append(mss, &ms)
+	for idx := range msList.Items {
+		ms := &msList.Items[idx]
+		if hasMatchingLabels(ms, m) {
+			mss = append(mss, ms)
 		}
 	}
 
