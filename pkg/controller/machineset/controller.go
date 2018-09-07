@@ -291,6 +291,19 @@ func (c *ReconcileMachineSet) createMachine(machineSet *clusterv1alpha1.MachineS
 	return machine
 }
 
+// shoudExcludeMachine returns true if the machine should be filtered out, false otherwise.
+func shouldExcludeMachine(machineSet *clusterv1alpha1.MachineSet, machine *clusterv1alpha1.Machine) bool {
+	// Ignore inactive machines.
+	if metav1.GetControllerOf(machine) != nil && !metav1.IsControlledBy(machine, machineSet) {
+		glog.V(4).Infof("%s not controlled by %v", machine.Name, machineSet.Name)
+		return true
+	}
+	if !hasMatchingLabels(machineSet, machine) {
+		return true
+	}
+	return false
+}
+
 func (c *ReconcileMachineSet) adoptOrphan(machineSet *clusterv1alpha1.MachineSet, machine *clusterv1alpha1.Machine) error {
 	// Add controller reference.
 	ownerRefs := machine.ObjectMeta.GetOwnerReferences()
@@ -355,17 +368,4 @@ func (c *ReconcileMachineSet) waitForMachineDeletion(machineList []*clusterv1alp
 		}
 	}
 	return nil
-}
-
-// shoudExcludeMachine returns true if the machine should be filtered out, false otherwise.
-func shouldExcludeMachine(machineSet *clusterv1alpha1.MachineSet, machine *clusterv1alpha1.Machine) bool {
-	// Ignore inactive machines.
-	if metav1.GetControllerOf(machine) != nil && !metav1.IsControlledBy(machine, machineSet) {
-		glog.V(4).Infof("%s not controlled by %v", machine.Name, machineSet.Name)
-		return true
-	}
-	if !hasMatchingLabels(machineSet, machine) {
-		return true
-	}
-	return false
 }
