@@ -31,6 +31,7 @@ const ClusterFinalizer = "cluster.cluster.k8s.io"
 
 // Cluster is the Schema for the clusters API
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
 type Cluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

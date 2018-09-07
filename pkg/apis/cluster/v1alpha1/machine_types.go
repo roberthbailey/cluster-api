@@ -32,6 +32,7 @@ const MachineFinalizer = "machine.cluster.k8s.io"
 
 // Machine is the Schema for the machines API
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
 type Machine struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
