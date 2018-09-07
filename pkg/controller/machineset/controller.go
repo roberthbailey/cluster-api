@@ -110,10 +110,21 @@ func (r *ReconcileMachineSet) MachineSetToMachines(o handler.MapObject) []reconc
 		return nil
 	}
 
+	for _, ref := range m.ObjectMeta.OwnerReferences {
+		if ref.Controller != nil && *ref.Controller {
+			return result
+		}
+	}
+
 	mss := r.getMachineSetsForMachine(m)
 	if len(mss) == 0 {
 		glog.V(4).Infof("Found no machine set for machine: %v", m.Name)
 		return nil
+	}
+
+	for _, ms := range mss {
+		result = append(result, reconcile.Request{
+			NamespacedName: client.ObjectKey{Namespace: ms.Namespace, Name: ms.Name}})
 	}
 
 	return result
@@ -140,25 +151,27 @@ func (r *ReconcileMachineSet) Reconcile(request reconcile.Request) (reconcile.Re
 
 	glog.V(4).Infof("Reconcile machineset %v", machineSet.Name)
 	allMachines := &clusterv1alpha1.MachineList{}
-	err = r.Client.List(context.Background(), &client.ListOptions{Namespace: machineSet.Namespace}, allMachines)
+
+	err = r.Client.List(context.Background(), client.InNamespace(machineSet.Namespace), allMachines)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("failed to list machines, %v", err)
 	}
 
 	// Filter out irrelevant machines (deleting/mismatch labels) and claim orphaned machines.
 	var filteredMachines []*clusterv1alpha1.Machine
-	for _, machine := range allMachines.Items {
-		if shouldExcludeMachine(machineSet, &machine) {
+	for idx := range allMachines.Items {
+		machine := &allMachines.Items[idx]
+		if shouldExcludeMachine(machineSet, machine) {
 			continue
 		}
 		// Attempt to adopt machine if it meets previous conditions and it has no controller ref.
-		if metav1.GetControllerOf(&machine) == nil {
-			if err := r.adoptOrphan(machineSet, &machine); err != nil {
+		if metav1.GetControllerOf(machine) == nil {
+			if err := r.adoptOrphan(machineSet, machine); err != nil {
 				glog.Warningf("failed to adopt machine %v into machineset %v. %v", machine.Name, machineSet.Name, err)
 				continue
 			}
 		}
-		filteredMachines = append(filteredMachines, &machine)
+		filteredMachines = append(filteredMachines, machine)
 	}
 
 	syncErr := r.syncReplicas(machineSet, filteredMachines)

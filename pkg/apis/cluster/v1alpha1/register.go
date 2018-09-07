@@ -40,3 +40,9 @@ var (
 	// TODO(pwittrock): Remove this after removing pkg/client/...
 	AddToScheme = SchemeBuilder.AddToScheme
 )
+
+// Required by pkg/client/listers/...
+// TODO(pwittrock): Remove this after removing pkg/client/...
+func Resource(resource string) schema.GroupResource {
+	return SchemeGroupVersion.WithResource(resource).GroupResource()
+}
