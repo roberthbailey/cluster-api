@@ -155,6 +155,7 @@ type MachineDeploymentStatus struct {
 
 // MachineDeployment is the Schema for the machinedeployments API
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
 type MachineDeployment struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
