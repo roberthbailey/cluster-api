@@ -35,4 +35,8 @@ var (
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: SchemeGroupVersion}
+
+	// Required by pkg/client/...
+	// TODO(pwittrock): Remove this after removing pkg/client/...
+	AddToScheme = SchemeBuilder.AddToScheme
 )

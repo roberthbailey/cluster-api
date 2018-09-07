@@ -18,11 +18,6 @@ required = [
 [prune]
   go-tests = true
 
-[[constraint]]
-  name="k8s.io/apiserver"
-  version="kubernetes-1.10.0"
-
-
 # STANZAS BELOW ARE GENERATED AND MAY BE WRITTEN - DO NOT MODIFY BELOW THIS LINE.
 
 [[constraint]]
