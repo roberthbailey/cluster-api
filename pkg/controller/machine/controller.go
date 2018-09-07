@@ -46,9 +46,12 @@ func AddWithActuator(mgr manager.Manager, actuator Actuator) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, actuator Actuator) reconcile.Reconciler {
-	r := &ReconcileMachine{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
-	r.nodeName = os.Getenv(NodeNameEnvVar)
-	r.actuator = actuator
+	r := &ReconcileMachine{
+		Client:   mgr.GetClient(),
+		scheme:   mgr.GetScheme(),
+		nodeName: os.Getenv(NodeNameEnvVar),
+		actuator: actuator,
+	}
 
 	if r.nodeName == "" {
 		glog.Warningf("environment variable %v is not set, this controller will not protect against deleting its own machine", NodeNameEnvVar)
@@ -188,7 +191,7 @@ func (c *ReconcileMachine) delete(machine *clusterv1.Machine) error {
 
 func (c *ReconcileMachine) getCluster(machine *clusterv1.Machine) (*clusterv1.Cluster, error) {
 	clusterList := clusterv1.ClusterList{}
-	err := c.Client.List(context.Background(), &client.ListOptions{Namespace: machine.Namespace}, &clusterList)
+	err := c.Client.List(context.Background(), client.InNamespace(machine.Namespace), &clusterList)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +214,7 @@ func (c *ReconcileMachine) isDeleteAllowed(machine *clusterv1.Machine) bool {
 		return true
 	}
 	node := &corev1.Node{}
-	err := c.Client.Get(context.Background(), client.ObjectKey{Namespace: "", Name: c.nodeName}, node)
+	err := c.Client.Get(context.Background(), client.ObjectKey{Name: c.nodeName}, node)
 	if err != nil {
 		glog.Infof("unable to determine if controller's node is associated with machine '%v', error getting node named '%v': %v", machine.Name, c.nodeName, err)
 		return true
