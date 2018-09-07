@@ -40,11 +40,6 @@ const NodeNameEnvVar = "NODE_NAME"
 
 var DefaultActuator Actuator
 
-// Add creates a new Machine Controller and adds it to the Manager with default RBAC.
-func Add(mgr manager.Manager) error {
-	return AddWithActuator(mgr, DefaultActuator)
-}
-
 func AddWithActuator(mgr manager.Manager, actuator Actuator) error {
 	return add(mgr, newReconciler(mgr, actuator))
 }
