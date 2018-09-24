@@ -14,20 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package clusterdeployer
+package main
 
-import (
-	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/cluster-api/clusterctl/providercomponents"
-)
+import "sigs.k8s.io/cluster-api/cmd/clusterctl/cmd"
 
-type factory struct {
-}
-
-func NewProviderComponentsStoreFactory() ProviderComponentsStoreFactory {
-	return &factory{}
-}
-
-func (f *factory) NewFromCoreClientset(clientset *kubernetes.Clientset) (ProviderComponentsStore, error) {
-	return providercomponents.NewFromClientset(clientset)
+func main() {
+	cmd.Execute()
 }

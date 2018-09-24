@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	tcmd "k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/cluster-api/clusterctl/validation"
+	"sigs.k8s.io/cluster-api/cmd/clusterctl/validation"
 	"sigs.k8s.io/cluster-api/pkg/clientcmd"
 )
 
