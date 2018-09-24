@@ -19,6 +19,7 @@ package validation
 import (
 	"bytes"
 	"io/ioutil"
+	//	"k8s.io/kops/_vendor/github.com/kubernetes-incubator/apiserver-builder/pkg/test"
 	"os"
 	"path"
 	"testing"
@@ -28,7 +29,7 @@ import (
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
-	"sigs.k8s.io/cluster-api/pkg/apis"
+	//	"sigs.k8s.io/cluster-api/pkg/apis"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1/testutil"
@@ -40,14 +41,14 @@ var clusterApiClient *clientset.Clientset
 var k8sClient kubernetes.Interface
 
 func TestMain(m *testing.M) {
-	testenv := test.NewTestEnvironment()
-	config := testenv.Start(apis.GetAllApiBuilders(), openapi.GetOpenAPIDefinitions)
-	clusterApiClient = clientset.NewForConfigOrDie(config)
+	//	testenv := test.NewTestEnvironment()
+	//	config := testenv.Start(apis.GetAllApiBuilders(), openapi.GetOpenAPIDefinitions)
+	//	clusterApiClient = clientset.NewForConfigOrDie(config)
 	k8sClient = fake.NewSimpleClientset()
 
 	code := m.Run()
 
-	testenv.Stop()
+	//	testenv.Stop()
 	os.Exit(code)
 }
 

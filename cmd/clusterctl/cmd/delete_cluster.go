@@ -21,9 +21,9 @@ import (
 
 	"k8s.io/api/core/v1"
 	tcmd "k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/cluster-api/clusterctl/clusterdeployer"
-	"sigs.k8s.io/cluster-api/clusterctl/clusterdeployer/bootstrap/minikube"
-	"sigs.k8s.io/cluster-api/clusterctl/providercomponents"
+	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer"
+	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer/bootstrap/minikube"
+	"sigs.k8s.io/cluster-api/cmd/clusterctl/providercomponents"
 	"sigs.k8s.io/cluster-api/pkg/clientcmd"
 
 	"github.com/golang/glog"

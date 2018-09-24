@@ -25,7 +25,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
-	"sigs.k8s.io/cluster-api/clusterctl/providercomponents"
+	"sigs.k8s.io/cluster-api/cmd/clusterctl/providercomponents"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 

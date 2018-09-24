@@ -82,7 +82,7 @@ func validateClusterObject(w io.Writer, cluster *v1alpha1.Cluster) error {
 func validateMachineObjects(w io.Writer, machines *v1alpha1.MachineList, k8sClient kubernetes.Interface) error {
 	pass := true
 	for _, machine := range machines.Items {
-		if (!validateMachineObject(w, machine, k8sClient)) {
+		if !validateMachineObject(w, machine, k8sClient) {
 			pass = false
 		}
 	}
