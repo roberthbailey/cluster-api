@@ -81,8 +81,6 @@ spec:
               required:
               - kubelet
               type: object
-          required:
-          - providerStatus
           type: object
   version: v1alpha1
 status:
