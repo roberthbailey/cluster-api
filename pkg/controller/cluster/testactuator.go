@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package machine
+package cluster
 
 import (
 	"sync"
@@ -23,33 +23,28 @@ import (
 )
 
 type TestActuator struct {
-	unblock         chan string
-	BlockOnCreate   bool
-	BlockOnDelete   bool
-	BlockOnUpdate   bool
-	BlockOnExists   bool
-	CreateCallCount int64
-	DeleteCallCount int64
-	UpdateCallCount int64
-	ExistsCallCount int64
-	ExistsValue     bool
-	Lock            sync.Mutex
+	unblock            chan string
+	BlockOnReconcile   bool
+	BlockOnDelete      bool
+	ReconcileCallCount int64
+	DeleteCallCount    int64
+	Lock               sync.Mutex
 }
 
-func (a *TestActuator) Create(*v1alpha1.Cluster, *v1alpha1.Machine) error {
+func (a *TestActuator) Reconcile(*v1alpha1.Cluster) error {
 	defer func() {
-		if a.BlockOnCreate {
+		if a.BlockOnReconcile {
 			<-a.unblock
 		}
 	}()
 
 	a.Lock.Lock()
 	defer a.Lock.Unlock()
-	a.CreateCallCount++
+	a.ReconcileCallCount++
 	return nil
 }
 
-func (a *TestActuator) Delete(*v1alpha1.Cluster, *v1alpha1.Machine) error {
+func (a *TestActuator) Delete(*v1alpha1.Cluster) error {
 	defer func() {
 		if a.BlockOnDelete {
 			<-a.unblock
@@ -60,32 +55,6 @@ func (a *TestActuator) Delete(*v1alpha1.Cluster, *v1alpha1.Machine) error {
 	defer a.Lock.Unlock()
 	a.DeleteCallCount++
 	return nil
-}
-
-func (a *TestActuator) Update(c *v1alpha1.Cluster, machine *v1alpha1.Machine) error {
-	defer func() {
-		if a.BlockOnUpdate {
-			<-a.unblock
-		}
-	}()
-
-	a.Lock.Lock()
-	defer a.Lock.Unlock()
-	a.UpdateCallCount++
-	return nil
-}
-
-func (a *TestActuator) Exists(*v1alpha1.Cluster, *v1alpha1.Machine) (bool, error) {
-	defer func() {
-		if a.BlockOnExists {
-			<-a.unblock
-		}
-	}()
-
-	a.Lock.Lock()
-	defer a.Lock.Unlock()
-	a.ExistsCallCount++
-	return a.ExistsValue, nil
 }
 
 func newTestActuator() *TestActuator {

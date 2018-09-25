@@ -605,7 +605,7 @@ func TestDeleteBasicScenarios(t *testing.T) {
 		{"success", nil, nil, &testClusterClient{}, &testClusterClient{}, ""},
 		{"error creating core client", nil, fmt.Errorf("error creating core client"), &testClusterClient{}, &testClusterClient{}, "could not create bootstrap cluster: unable to create bootstrap client: error creating core client"},
 		{"fail provision bootstrap cluster", fmt.Errorf("minikube error"), nil, &testClusterClient{}, &testClusterClient{}, "could not create bootstrap cluster: could not create bootstrap control plane: minikube error"},
-		{"fail apply yaml to bootstrap cluster", nil, nil, &testClusterClient{ApplyErr: fmt.Errorf("yaml apply error")}, &testClusterClient{}, "unable to apply cluster api stack to bootstrap cluster: unable to apply cluster apiserver: unable to apply apiserver yaml: yaml apply error"},
+		{"fail apply yaml to bootstrap cluster", nil, nil, &testClusterClient{ApplyErr: fmt.Errorf("yaml apply error")}, &testClusterClient{}, "unable to apply cluster api stack to bootstrap cluster: unable to apply cluster api controllers: yaml apply error"},
 		{"fail delete provider components should succeed", nil, nil, &testClusterClient{}, &testClusterClient{DeleteErr: fmt.Errorf("kubectl delete error")}, ""},
 		{"error listing machines", nil, nil, &testClusterClient{}, &testClusterClient{GetMachineObjectsErr: fmt.Errorf("get machines error")}, "unable to copy objects from target to bootstrap cluster: get machines error"},
 		{"error listing machine sets", nil, nil, &testClusterClient{}, &testClusterClient{GetMachineSetObjectsErr: fmt.Errorf("get machine sets error")}, "unable to copy objects from target to bootstrap cluster: get machine sets error"},

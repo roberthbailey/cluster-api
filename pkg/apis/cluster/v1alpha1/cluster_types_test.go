@@ -27,7 +27,15 @@ import (
 
 func TestStorageCluster(t *testing.T) {
 	key := types.NamespacedName{Name: "foo", Namespace: "default"}
-	created := &Cluster{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
+	created := &Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+		Spec: ClusterSpec{
+			ClusterNetwork: ClusterNetworkingConfig{
+				Services: NetworkRanges{CIDRBlocks: []string{"10.96.0.0/12"}},
+				Pods:     NetworkRanges{CIDRBlocks: []string{"192.168.0.0/16"}},
+			},
+		},
+	}
 	g := gomega.NewGomegaWithT(t)
 
 	// Test Create

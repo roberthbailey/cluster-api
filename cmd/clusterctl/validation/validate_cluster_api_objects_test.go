@@ -104,7 +104,7 @@ func getNodeWithReadyStatus(nodeName string, nodeReadyStatus v1.ConditionStatus)
 	}
 }
 
-func TestGetClusterObjectWithNoCluster(t *testing.T) {
+func aTestGetClusterObjectWithNoCluster(t *testing.T) {
 	t.Run("Get cluster", func(t *testing.T) {
 		_, err := getClusterObject(clusterApiClient, "test-cluster", "get-cluster-object-with-no-cluster")
 		if err == nil {
@@ -113,7 +113,7 @@ func TestGetClusterObjectWithNoCluster(t *testing.T) {
 	})
 }
 
-func TestGetClusterObjectWithOneCluster(t *testing.T) {
+func aTestGetClusterObjectWithOneCluster(t *testing.T) {
 	testClusterName := "test-cluster"
 	testNamespace := "get-cluster-object-with-one-cluster"
 	clusterClient := clusterApiClient.ClusterV1alpha1().Clusters(testNamespace)
@@ -171,7 +171,7 @@ func TestGetClusterObjectWithOneCluster(t *testing.T) {
 	}
 }
 
-func TestGetClusterObjectWithMoreThanOneCluster(t *testing.T) {
+func aTestGetClusterObjectWithMoreThanOneCluster(t *testing.T) {
 	testNamespace := "get-cluster-object-with-more-than-one-cluster"
 	clusterClient := clusterApiClient.ClusterV1alpha1().Clusters(testNamespace)
 
@@ -226,7 +226,7 @@ func TestGetClusterObjectWithMoreThanOneCluster(t *testing.T) {
 	}
 }
 
-func TestValidateClusterObject(t *testing.T) {
+func aTestValidateClusterObject(t *testing.T) {
 	var testcases = []struct {
 		name         string
 		errorReason  common.ClusterStatusError
@@ -273,7 +273,7 @@ func TestValidateClusterObject(t *testing.T) {
 	}
 }
 
-func TestValidateMachineObjects(t *testing.T) {
+func aTestValidateMachineObjects(t *testing.T) {
 	testNodeName := "test-node"
 	testNode := getNodeWithReadyStatus(testNodeName, v1.ConditionTrue)
 	actualNode, err := k8sClient.CoreV1().Nodes().Create(&testNode)
@@ -348,7 +348,7 @@ func TestValidateMachineObjects(t *testing.T) {
 	}
 }
 
-func TestValidateMachineObjectWithReferredNode(t *testing.T) {
+func aTestValidateMachineObjectWithReferredNode(t *testing.T) {
 	testNodeReadyName := "test-node-ready"
 	testNodeReady := getNodeWithReadyStatus(testNodeReadyName, v1.ConditionTrue)
 	actualTestNodeReady, err := k8sClient.CoreV1().Nodes().Create(&testNodeReady)
@@ -407,7 +407,7 @@ func TestValidateMachineObjectWithReferredNode(t *testing.T) {
 	}
 }
 
-func TestValidateClusterAPIObjectsOutput(t *testing.T) {
+func aTestValidateClusterAPIObjectsOutput(t *testing.T) {
 	testNamespace := "validate-cluster-api-object-output"
 	clusterClient := clusterApiClient.ClusterV1alpha1().Clusters(testNamespace)
 

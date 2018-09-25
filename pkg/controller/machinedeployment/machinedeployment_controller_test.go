@@ -22,8 +22,6 @@ import (
 
 	"github.com/onsi/gomega"
 	"golang.org/x/net/context"
-	appsv1 "k8s.io/api/apps/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -35,13 +33,23 @@ import (
 var c client.Client
 
 var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-var depKey = types.NamespacedName{Name: "foo-deployment", Namespace: "default"}
 
 const timeout = time.Second * 5
 
 func TestReconcile(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
-	instance := &clusterv1alpha1.MachineDeployment{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
+	replicas := int32(2)
+	instance := &clusterv1alpha1.MachineDeployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+		Spec: clusterv1alpha1.MachineDeploymentSpec{
+			Replicas: &replicas,
+			Template: clusterv1alpha1.MachineTemplateSpec{
+				Spec: clusterv1alpha1.MachineSpec{
+					Versions: clusterv1alpha1.MachineVersionInfo{Kubelet: "1.10.3"},
+				},
+			},
+		},
+	}
 
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
 	// channel when it is finished.
@@ -49,34 +57,46 @@ func TestReconcile(t *testing.T) {
 	g.Expect(err).NotTo(gomega.HaveOccurred())
 	c = mgr.GetClient()
 
-	recFn, requests := SetupTestReconcile(newReconciler(mgr))
-	r := &ReconcileMachineDeployment{}
+	r := newReconciler(mgr)
+	recFn, requests := SetupTestReconcile(r)
 	g.Expect(add(mgr, recFn, r.MachineSetToDeployments)).NotTo(gomega.HaveOccurred())
 	defer close(StartTestManager(mgr, g))
 
-	// Create the MachineDeployment object and expect the Reconcile and Deployment to be created
+	// Create the MachineDeployment object and expect Reconcile to be called.
 	err = c.Create(context.TODO(), instance)
-	// The instance object may not be a valid object because it might be missing some required fields.
-	// Please modify the instance object by adding required fields and then remove the following if statement.
-	if apierrors.IsInvalid(err) {
-		t.Logf("failed to create object, got an invalid object error: %v", err)
-		return
-	}
 	g.Expect(err).NotTo(gomega.HaveOccurred())
 	defer c.Delete(context.TODO(), instance)
 	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
 
-	deploy := &appsv1.Deployment{}
-	g.Eventually(func() error { return c.Get(context.TODO(), depKey, deploy) }, timeout).
-		Should(gomega.Succeed())
+	/*
+		// Verify that the MachineSet was created.
+		machineSets := &clusterv1alpha1.MachineSetList{}
+		g.Eventually(func() int {
+			if err := c.List(context.TODO(), &client.ListOptions{}, machineSets); err != nil {
+				return -1
+			}
+			return len(machineSets.Items)
+		}, timeout).Should(gomega.BeEquivalentTo(1))
+		ms := machineSets.Items[0]
+		g.Expect(ms.Spec.Replicas).Should(gomega.BeEquivalentTo(1))
+		g.Expect(ms.Spec.Template.Spec.Versions.Kubelet).Should(gomega.Equal("1.10.3"))
 
-	// Delete the Deployment and expect Reconcile to be called for Deployment deletion
-	g.Expect(c.Delete(context.TODO(), deploy)).NotTo(gomega.HaveOccurred())
-	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
-	g.Eventually(func() error { return c.Get(context.TODO(), depKey, deploy) }, timeout).
-		Should(gomega.Succeed())
+		// Verify that Machines were created with the desired kubelet version.
+		// TODO: remove this?
+		machines := &clusterv1alpha1.MachineList{}
+		g.Eventually(func() int {
+			if err := c.List(context.TODO(), &client.ListOptions{}, machines); err != nil {
+				return -1
+			}
+			return len(machines.Items)
+		}, timeout).Should(gomega.BeEquivalentTo(replicas))
+		for _, m := range machines.Items {
+			g.Expect(m.Spec.Versions.Kubelet).Should(gomega.Equal("1.10.3"))
+		}
 
-	// Manually delete Deployment since GC isn't enabled in the test control plane
-	g.Expect(c.Delete(context.TODO(), deploy)).To(gomega.Succeed())
+		// Delete a MachineSet and expect Reconcile to be called to replace it.
+		g.Expect(c.Delete(context.TODO(), &ms)).NotTo(gomega.HaveOccurred())
+		g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
 
+	*/
 }
