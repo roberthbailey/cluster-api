@@ -18,112 +18,94 @@ package validation
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
-	//	"k8s.io/kops/_vendor/github.com/kubernetes-incubator/apiserver-builder/pkg/test"
-	"os"
 	"path"
 	"testing"
 
-	//"github.com/kubernetes-incubator/apiserver-builder/pkg/test"
+	"github.com/onsi/gomega"
+
 	"k8s.io/api/core/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/fake"
-	//	"sigs.k8s.io/cluster-api/pkg/apis"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1/testutil"
-	"sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset"
-	//"sigs.k8s.io/cluster-api/pkg/openapi"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-var clusterApiClient *clientset.Clientset
-var k8sClient kubernetes.Interface
+var c client.Client
 
-func TestMain(m *testing.M) {
-	//	testenv := test.NewTestEnvironment()
-	//	config := testenv.Start(apis.GetAllApiBuilders(), openapi.GetOpenAPIDefinitions)
-	//	clusterApiClient = clientset.NewForConfigOrDie(config)
-	k8sClient = fake.NewSimpleClientset()
-
-	code := m.Run()
-
-	//	testenv.Stop()
-	os.Exit(code)
-}
-
-func getClusterWithError(clusterName string, errorReason common.ClusterStatusError, errorMessage string) v1alpha1.Cluster {
-	return v1alpha1.Cluster{
-		ObjectMeta: meta_v1.ObjectMeta{
-			Name: clusterName,
-		},
-		Spec: v1alpha1.ClusterSpec{
-			ClusterNetwork: v1alpha1.ClusterNetworkingConfig{
-				Services: v1alpha1.NetworkRanges{
-					CIDRBlocks: []string{"10.96.0.0/12"},
-				},
-				Pods: v1alpha1.NetworkRanges{
-					CIDRBlocks: []string{"192.168.0.0/16"},
-				},
-				ServiceDomain: "cluster.local",
-			},
-		},
-		Status: v1alpha1.ClusterStatus{
-			ErrorReason:  errorReason,
-			ErrorMessage: errorMessage,
-		},
+func newClusterStatus(errorReason common.ClusterStatusError, errorMessage string) v1alpha1.ClusterStatus {
+	return v1alpha1.ClusterStatus{
+		ErrorReason:  errorReason,
+		ErrorMessage: errorMessage,
 	}
 }
 
-func getMachineWithError(machineName string, nodeRef *v1.ObjectReference, errorReason *common.MachineStatusError, errorMessage *string) v1alpha1.Machine {
+func newMachineStatus(nodeRef *v1.ObjectReference, errorReason *common.MachineStatusError, errorMessage *string) v1alpha1.MachineStatus {
+	return v1alpha1.MachineStatus{
+		NodeRef:      nodeRef,
+		ErrorReason:  errorReason,
+		ErrorMessage: errorMessage,
+	}
+}
+
+func getMachineWithError(machineName, namespace string, nodeRef *v1.ObjectReference, errorReason *common.MachineStatusError, errorMessage *string) v1alpha1.Machine {
 	return v1alpha1.Machine{
-		ObjectMeta: meta_v1.ObjectMeta{
-			Name: machineName,
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      machineName,
+			Namespace: namespace,
 		},
-		Status: v1alpha1.MachineStatus{
-			NodeRef:      nodeRef,
-			ErrorReason:  errorReason,
-			ErrorMessage: errorMessage,
-		},
+		Status: newMachineStatus(nodeRef, errorReason, errorMessage),
 	}
 }
 
 func getNodeWithReadyStatus(nodeName string, nodeReadyStatus v1.ConditionStatus) v1.Node {
 	return v1.Node{
-		ObjectMeta: meta_v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: nodeName,
 		},
 		Status: v1.NodeStatus{
 			Conditions: []v1.NodeCondition{
-				v1.NodeCondition{
-					Type:   v1.NodeReady,
-					Status: nodeReadyStatus,
-				},
+				{Type: v1.NodeReady, Status: nodeReadyStatus},
 			},
 		},
 	}
 }
 
-func aTestGetClusterObjectWithNoCluster(t *testing.T) {
-	t.Run("Get cluster", func(t *testing.T) {
-		_, err := getClusterObject(clusterApiClient, "test-cluster", "get-cluster-object-with-no-cluster")
-		if err == nil {
-			t.Fatalf("Expect to get error, but got no returned error.")
-		}
-	})
+func TestGetClusterObjectWithNoCluster(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	// Setup the Manager and Controller.
+	mgr, err := manager.New(cfg, manager.Options{})
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	c = mgr.GetClient()
+	defer close(StartTestManager(mgr, g))
+
+	_, err = getClusterObject(c, "test-cluster", "get-cluster-object-with-no-cluster")
+	g.Expect(err).To(gomega.HaveOccurred())
 }
 
-func aTestGetClusterObjectWithOneCluster(t *testing.T) {
-	testClusterName := "test-cluster"
-	testNamespace := "get-cluster-object-with-one-cluster"
-	clusterClient := clusterApiClient.ClusterV1alpha1().Clusters(testNamespace)
+func TestGetClusterObjectWithOneCluster(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	// Setup the Manager and Controller.
+	mgr, err := manager.New(cfg, manager.Options{})
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	c = mgr.GetClient()
+	defer close(StartTestManager(mgr, g))
+
+	const testClusterName = "test-cluster"
+	const testNamespace = "get-cluster-object-with-one-cluster"
 	cluster := testutil.GetVanillaCluster()
 	cluster.Name = testClusterName
-	actualCluster, err := clusterClient.Create(&cluster)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer clusterClient.Delete(actualCluster.Name, &meta_v1.DeleteOptions{})
+	cluster.Namespace = testNamespace
+	err = c.Create(context.TODO(), &cluster)
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	defer c.Delete(context.TODO(), &cluster)
+
 	var testcases = []struct {
 		name        string
 		clusterName string
@@ -157,7 +139,7 @@ func aTestGetClusterObjectWithOneCluster(t *testing.T) {
 	}
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			cluster, err := getClusterObject(clusterApiClient, testcase.clusterName, testcase.namespace)
+			cluster, err := getClusterObject(c, testcase.clusterName, testcase.namespace)
 			if testcase.expectErr && err == nil {
 				t.Fatalf("Expect to get error, but got no returned error.")
 			}
@@ -171,28 +153,32 @@ func aTestGetClusterObjectWithOneCluster(t *testing.T) {
 	}
 }
 
-func aTestGetClusterObjectWithMoreThanOneCluster(t *testing.T) {
-	testNamespace := "get-cluster-object-with-more-than-one-cluster"
-	clusterClient := clusterApiClient.ClusterV1alpha1().Clusters(testNamespace)
+func TestGetClusterObjectWithMoreThanOneCluster(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
 
-	testClusterName1 := "test-cluster1"
+	// Setup the Manager and Controller.
+	mgr, err := manager.New(cfg, manager.Options{})
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	c = mgr.GetClient()
+	defer close(StartTestManager(mgr, g))
+
+	const testNamespace = "get-cluster-object-with-more-than-one-cluster"
+
+	const testClusterName1 = "test-cluster1"
 	cluster1 := testutil.GetVanillaCluster()
 	cluster1.Name = testClusterName1
-	actualCluster1, err := clusterClient.Create(&cluster1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer clusterClient.Delete(actualCluster1.Name, &meta_v1.DeleteOptions{})
+	cluster1.Namespace = testNamespace
+	err = c.Create(context.TODO(), &cluster1)
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	defer c.Delete(context.TODO(), &cluster1)
 
-	testClusterName2 := "test-cluster2"
+	const testClusterName2 = "test-cluster2"
 	cluster2 := testutil.GetVanillaCluster()
 	cluster2.Name = testClusterName2
-	actualCluster2, err := clusterClient.Create(&cluster2)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer clusterClient.Delete(actualCluster2.Name, &meta_v1.DeleteOptions{})
+	cluster2.Namespace = testNamespace
+	err = c.Create(context.TODO(), &cluster2)
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	defer c.Delete(context.TODO(), &cluster2)
 
 	var testcases = []struct {
 		name        string
@@ -212,7 +198,7 @@ func aTestGetClusterObjectWithMoreThanOneCluster(t *testing.T) {
 	}
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			cluster, err := getClusterObject(clusterApiClient, testcase.clusterName, testNamespace)
+			cluster, err := getClusterObject(c, testcase.clusterName, testNamespace)
 			if testcase.expectErr && err == nil {
 				t.Fatalf("Expect to get error, but got no returned error.")
 			}
@@ -226,7 +212,7 @@ func aTestGetClusterObjectWithMoreThanOneCluster(t *testing.T) {
 	}
 }
 
-func aTestValidateClusterObject(t *testing.T) {
+func TestValidateClusterObject(t *testing.T) {
 	var testcases = []struct {
 		name         string
 		errorReason  common.ClusterStatusError
@@ -260,7 +246,10 @@ func aTestValidateClusterObject(t *testing.T) {
 	}
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			cluster := getClusterWithError("test-cluster", testcase.errorReason, testcase.errorMessage)
+			cluster := testutil.GetVanillaCluster()
+			cluster.Name = "test-cluster"
+			cluster.Namespace = "default"
+			cluster.Status = newClusterStatus(testcase.errorReason, testcase.errorMessage)
 			var b bytes.Buffer
 			err := validateClusterObject(&b, &cluster)
 			if testcase.expectErr && err == nil {
@@ -273,14 +262,20 @@ func aTestValidateClusterObject(t *testing.T) {
 	}
 }
 
-func aTestValidateMachineObjects(t *testing.T) {
-	testNodeName := "test-node"
+func TestValidateMachineObjects(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	// Setup the Manager and Controller.
+	mgr, err := manager.New(cfg, manager.Options{})
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	c = mgr.GetClient()
+	defer close(StartTestManager(mgr, g))
+
+	const testNodeName = "test-node"
 	testNode := getNodeWithReadyStatus(testNodeName, v1.ConditionTrue)
-	actualNode, err := k8sClient.CoreV1().Nodes().Create(&testNode)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer k8sClient.CoreV1().Nodes().Delete(actualNode.Name, &meta_v1.DeleteOptions{})
+	err = c.Create(context.TODO(), &testNode)
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	defer c.Delete(context.TODO(), &testNode)
 
 	testNodeRef := v1.ObjectReference{Kind: "Node", Name: testNodeName}
 	machineErrorReason := common.CreateMachineError
@@ -332,40 +327,44 @@ func aTestValidateMachineObjects(t *testing.T) {
 		t.Run(testcase.name, func(t *testing.T) {
 			machines := v1alpha1.MachineList{
 				Items: []v1alpha1.Machine{
-					getMachineWithError("test-machine-with-no-error", &testNodeRef, nil, nil),
-					getMachineWithError("test-machine", testcase.nodeRef, testcase.errorReason, testcase.errorMessage),
+					getMachineWithError("test-machine-with-no-error", "default", &testNodeRef, nil, nil),
+					getMachineWithError("test-machine", "default", testcase.nodeRef, testcase.errorReason, testcase.errorMessage),
 				},
 			}
 			var b bytes.Buffer
-			err := validateMachineObjects(&b, &machines, k8sClient)
+			err := validateMachineObjects(&b, &machines, c)
 			if testcase.expectErr && err == nil {
-				t.Fatalf("Expect to get error, but got no returned error.")
+				t.Errorf("Expect to get error, but got no returned error: %v", b.String())
 			}
 			if !testcase.expectErr && err != nil {
-				t.Fatalf("Expect to get no error, but got returned error: %v", err)
+				t.Errorf("Expect to get no error, but got returned error: %v: %v", err, b.String())
 			}
 		})
 	}
 }
 
-func aTestValidateMachineObjectWithReferredNode(t *testing.T) {
-	testNodeReadyName := "test-node-ready"
+func TestValidateMachineObjectWithReferredNode(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	// Setup the Manager and Controller.
+	mgr, err := manager.New(cfg, manager.Options{})
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	c = mgr.GetClient()
+	defer close(StartTestManager(mgr, g))
+
+	const testNodeReadyName = "test-node-ready"
 	testNodeReady := getNodeWithReadyStatus(testNodeReadyName, v1.ConditionTrue)
-	actualTestNodeReady, err := k8sClient.CoreV1().Nodes().Create(&testNodeReady)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer k8sClient.CoreV1().Nodes().Delete(actualTestNodeReady.Name, &meta_v1.DeleteOptions{})
+	err = c.Create(context.TODO(), &testNodeReady)
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	defer c.Delete(context.TODO(), &testNodeReady)
 
-	testNodeNotReadyName := "test-node-not-ready"
+	const testNodeNotReadyName = "test-node-not-ready"
 	testNodeNotReady := getNodeWithReadyStatus(testNodeNotReadyName, v1.ConditionFalse)
-	actualTestNodeNotReady, err := k8sClient.CoreV1().Nodes().Create(&testNodeNotReady)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer k8sClient.CoreV1().Nodes().Delete(actualTestNodeNotReady.Name, &meta_v1.DeleteOptions{})
+	err = c.Create(context.TODO(), &testNodeNotReady)
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	defer c.Delete(context.TODO(), &testNodeNotReady)
 
-	testNodeNotExistName := "test-node-not-exist"
+	const testNodeNotExistName = "test-node-not-exist"
 
 	var testcases = []struct {
 		name      string
@@ -392,11 +391,11 @@ func aTestValidateMachineObjectWithReferredNode(t *testing.T) {
 		t.Run(testcase.name, func(t *testing.T) {
 			machines := v1alpha1.MachineList{
 				Items: []v1alpha1.Machine{
-					getMachineWithError("test-machine", &testcase.nodeRef, nil, nil),
+					getMachineWithError("test-machine", "default", &testcase.nodeRef, nil, nil),
 				},
 			}
 			var b bytes.Buffer
-			err := validateMachineObjects(&b, &machines, k8sClient)
+			err := validateMachineObjects(&b, &machines, c)
 			if testcase.expectErr && err == nil {
 				t.Fatalf("Expect to get error, but got no returned error.")
 			}
@@ -407,58 +406,22 @@ func aTestValidateMachineObjectWithReferredNode(t *testing.T) {
 	}
 }
 
-func aTestValidateClusterAPIObjectsOutput(t *testing.T) {
-	testNamespace := "validate-cluster-api-object-output"
-	clusterClient := clusterApiClient.ClusterV1alpha1().Clusters(testNamespace)
+func TestValidateClusterAPIObjectsOutput(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
 
-	testClusterName := "test-cluster"
-	cluster := testutil.GetVanillaCluster()
-	cluster.Name = testClusterName
-	actualCluster, err := clusterClient.Create(&cluster)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer clusterClient.Delete(actualCluster.Name, &meta_v1.DeleteOptions{})
+	// Setup the Manager and Controller.
+	mgr, err := manager.New(cfg, manager.Options{})
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	c, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme(), Mapper: mgr.GetRESTMapper()})
+	g.Expect(err).ShouldNot(gomega.HaveOccurred())
+	defer close(StartTestManager(mgr, g))
 
-	machineClient := clusterApiClient.ClusterV1alpha1().Machines(testNamespace)
-	testMachine1Name := "test-machine1"
-	machine1 := getMachineWithError(testMachine1Name, nil, nil, nil) // machine with no error
-	_, err = machineClient.Create(&machine1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer machineClient.Delete(machine1.Name, &meta_v1.DeleteOptions{})
-	testMachine2Name := "test-machine2"
-	machine2 := getMachineWithError(testMachine2Name, nil, nil, nil) // machine with no error
-	_, err = machineClient.Create(&machine2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer machineClient.Delete(machine2.Name, &meta_v1.DeleteOptions{})
-
-	testNode1Name := "test-node1"
-	testNode1 := getNodeWithReadyStatus(testNode1Name, v1.ConditionTrue)
-	actualNode1, err := k8sClient.CoreV1().Nodes().Create(&testNode1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer k8sClient.CoreV1().Nodes().Delete(actualNode1.Name, &meta_v1.DeleteOptions{})
-
-	testNode2Name := "test-node2"
-	testNode2 := getNodeWithReadyStatus(testNode2Name, v1.ConditionTrue)
-	actualNode2, err := k8sClient.CoreV1().Nodes().Create(&testNode2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer k8sClient.CoreV1().Nodes().Delete(actualNode2.Name, &meta_v1.DeleteOptions{})
-
-	testNodeNotReadyName := "test-node-not-ready"
-	testNodeNotReady := getNodeWithReadyStatus(testNodeNotReadyName, v1.ConditionFalse)
-	actualTestNodeNotReady, err := k8sClient.CoreV1().Nodes().Create(&testNodeNotReady)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer k8sClient.CoreV1().Nodes().Delete(actualTestNodeNotReady.Name, &meta_v1.DeleteOptions{})
+	const testClusterName = "test-cluster"
+	const testMachine1Name = "test-machine1"
+	const testMachine2Name = "test-machine2"
+	const testNode1Name = "test-node1"
+	const testNode2Name = "test-node2"
+	const testNodeNotReadyName = "test-node-not-ready"
 
 	testNodeRef1 := v1.ObjectReference{Kind: "Node", Name: testNode1Name}
 	testNodeRef2 := v1.ObjectReference{Kind: "Node", Name: testNode2Name}
@@ -466,72 +429,117 @@ func aTestValidateClusterAPIObjectsOutput(t *testing.T) {
 	testNodeRefNotExist := v1.ObjectReference{Kind: "Node", Name: "test-node-not-exist"}
 	machineErrorReason := common.CreateMachineError
 	machineErrorMessage := "Failed to create machine"
+
 	var testcases = []struct {
-		name               string
-		clusterWithStatus  v1alpha1.Cluster
-		machine1WithStatus v1alpha1.Machine
-		machine2WithStatus v1alpha1.Machine
-		expectErr          bool
-		outputFileName     string
+		name           string
+		namespace      string
+		clusterStatus  v1alpha1.ClusterStatus
+		machine1Status v1alpha1.MachineStatus
+		machine2Status v1alpha1.MachineStatus
+		expectErr      bool
+		outputFileName string
 	}{
 		{
-			name:               "Pass",
-			clusterWithStatus:  getClusterWithError(testClusterName, "", ""),
-			machine1WithStatus: getMachineWithError(testMachine1Name, &testNodeRef1, nil, nil),
-			machine2WithStatus: getMachineWithError(testMachine2Name, &testNodeRef2, nil, nil),
-			expectErr:          false,
-			outputFileName:     "validate-cluster-api-object-output-pass.golden",
+			name:           "Pass",
+			namespace:      "validate-cluster-objects",
+			clusterStatus:  v1alpha1.ClusterStatus{},
+			machine1Status: newMachineStatus(&testNodeRef1, nil, nil),
+			machine2Status: newMachineStatus(&testNodeRef2, nil, nil),
+			expectErr:      false,
+			outputFileName: "validate-cluster-api-object-output-pass.golden",
 		},
 		{
-			name:               "Failed to validate cluster object",
-			clusterWithStatus:  getClusterWithError(testClusterName, common.CreateClusterError, "Failed to create cluster"),
-			machine1WithStatus: getMachineWithError(testMachine1Name, &testNodeRef1, nil, nil),
-			machine2WithStatus: getMachineWithError(testMachine2Name, &testNodeRef2, nil, nil),
-			expectErr:          true,
-			outputFileName:     "fail-to-validate-cluster-object.golden",
+			name:           "Failed to validate cluster object",
+			namespace:      "validate-cluster-objects-errors",
+			clusterStatus:  newClusterStatus(common.CreateClusterError, "Failed to create cluster"),
+			machine1Status: newMachineStatus(&testNodeRef1, nil, nil),
+			machine2Status: newMachineStatus(&testNodeRef2, nil, nil),
+			expectErr:      true,
+			outputFileName: "fail-to-validate-cluster-object.golden",
 		},
 		{
-			name:               "Failed to validate machine objects with errors",
-			clusterWithStatus:  getClusterWithError(testClusterName, "", ""),
-			machine1WithStatus: getMachineWithError(testMachine1Name, &testNodeRef1, &machineErrorReason, &machineErrorMessage),
-			machine2WithStatus: getMachineWithError(testMachine2Name, nil, nil, nil),
-			expectErr:          true,
-			outputFileName:     "fail-to-validate-machine-objects-with-errors.golden",
+			name:           "Failed to validate machine objects with errors",
+			namespace:      "validate-machine-objects-errors",
+			clusterStatus:  v1alpha1.ClusterStatus{},
+			machine1Status: newMachineStatus(&testNodeRef1, &machineErrorReason, &machineErrorMessage),
+			machine2Status: v1alpha1.MachineStatus{}, // newMachineStatus(nil, nil, nil),
+			expectErr:      true,
+			outputFileName: "fail-to-validate-machine-objects-with-errors.golden",
 		},
 		{
-			name:               "Failed to validate machine objects with node ref errors",
-			clusterWithStatus:  getClusterWithError(testClusterName, "", ""),
-			machine1WithStatus: getMachineWithError(testMachine1Name, &testNodeRefNotReady, nil, nil),
-			machine2WithStatus: getMachineWithError(testMachine2Name, &testNodeRefNotExist, nil, nil),
-			expectErr:          true,
-			outputFileName:     "fail-to-validate-machine-objects-with-noderef-errors.golden",
+			name:           "Failed to validate machine objects with node ref errors",
+			namespace:      "validate-machine-objects-node-ref-errors",
+			clusterStatus:  v1alpha1.ClusterStatus{},
+			machine1Status: newMachineStatus(&testNodeRefNotReady, nil, nil),
+			machine2Status: newMachineStatus(&testNodeRefNotExist, nil, nil),
+			expectErr:      true,
+			outputFileName: "fail-to-validate-machine-objects-with-noderef-errors.golden",
 		},
 	}
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			_, err = clusterClient.UpdateStatus(&testcase.clusterWithStatus)
-			if err != nil {
-				t.Fatal(err)
+			cluster := testutil.GetVanillaCluster()
+			cluster.Name = testClusterName
+			cluster.Namespace = testcase.namespace
+			err = c.Create(context.TODO(), &cluster)
+			g.Expect(err).NotTo(gomega.HaveOccurred())
+			defer c.Delete(context.TODO(), &cluster)
+
+			machine1 := getMachineWithError(testMachine1Name, testcase.namespace, nil, nil, nil) // machine with no error
+			err = c.Create(context.TODO(), &machine1)
+			g.Expect(err).NotTo(gomega.HaveOccurred())
+			defer c.Delete(context.TODO(), &machine1)
+
+			machine2 := getMachineWithError(testMachine2Name, testcase.namespace, nil, nil, nil) // machine with no error
+			err = c.Create(context.TODO(), &machine2)
+			g.Expect(err).NotTo(gomega.HaveOccurred())
+			defer c.Delete(context.TODO(), &machine2)
+
+			testNode1 := getNodeWithReadyStatus(testNode1Name, v1.ConditionTrue)
+			err = c.Create(context.TODO(), &testNode1)
+			g.Expect(err).NotTo(gomega.HaveOccurred())
+			defer c.Delete(context.TODO(), &testNode1)
+
+			testNode2 := getNodeWithReadyStatus(testNode2Name, v1.ConditionTrue)
+			err = c.Create(context.TODO(), &testNode2)
+			g.Expect(err).NotTo(gomega.HaveOccurred())
+			defer c.Delete(context.TODO(), &testNode2)
+
+			testNodeNotReady := getNodeWithReadyStatus(testNodeNotReadyName, v1.ConditionFalse)
+			err = c.Create(context.TODO(), &testNodeNotReady)
+			g.Expect(err).NotTo(gomega.HaveOccurred())
+			defer c.Delete(context.TODO(), &testNodeNotReady)
+
+			if err := c.Get(context.TODO(), types.NamespacedName{Name: testClusterName, Namespace: testcase.namespace}, &cluster); err != nil {
+				t.Fatalf("Unable to get cluster: %v", err)
 			}
-			testcase.machine1WithStatus.Name = testMachine1Name
-			_, err = machineClient.UpdateStatus(&testcase.machine1WithStatus)
-			if err != nil {
-				t.Fatal(err)
+			cluster.Status = testcase.clusterStatus
+			if err := c.Update(context.TODO(), &cluster); err != nil {
+				t.Fatalf("Unable to update cluster with status: %v", err)
 			}
-			testcase.machine2WithStatus.Name = testMachine2Name
-			_, err = machineClient.UpdateStatus(&testcase.machine2WithStatus)
-			if err != nil {
-				t.Fatal(err)
+			if err := c.Get(context.TODO(), types.NamespacedName{Name: testMachine1Name, Namespace: testcase.namespace}, &machine1); err != nil {
+				t.Fatalf("Unable to get machine 1: %v", err)
+			}
+			machine1.Status = testcase.machine1Status
+			if err := c.Update(context.TODO(), &machine1); err != nil {
+				t.Fatalf("Unable to update machine 1 with status: %v", err)
+			}
+			if err := c.Get(context.TODO(), types.NamespacedName{Name: testMachine2Name, Namespace: testcase.namespace}, &machine2); err != nil {
+				t.Fatalf("Unable to get machine 2: %v", err)
+			}
+			machine2.Status = testcase.machine2Status
+			if err := c.Update(context.TODO(), &machine2); err != nil {
+				t.Fatalf("Unable to update machine 2 with status: %v", err)
 			}
 
 			var output bytes.Buffer
-			err = ValidateClusterAPIObjects(&output, clusterApiClient, k8sClient, testClusterName, testNamespace)
+			err = ValidateClusterAPIObjects(&output, c, testClusterName, testcase.namespace)
 
 			if testcase.expectErr && err == nil {
-				t.Fatalf("Expect to get error, but got no returned error.")
+				t.Fatalf("Expect to get error, but got no returned error: %v", output.String())
 			}
 			if !testcase.expectErr && err != nil {
-				t.Fatalf("Expect to get no error, but got returned error: %v", err)
+				t.Fatalf("Expect to get no error, but got returned error: %v: %v", err, output.String())
 			}
 
 			outputFilePath := path.Join("testdata", testcase.outputFileName)
