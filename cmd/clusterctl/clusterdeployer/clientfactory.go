@@ -18,7 +18,7 @@ package clusterdeployer
 
 import (
 	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/cluster-api/pkg/clientcmd"
+	"sigs.k8s.io/cluster-api/cmd/clusterctl/clientcmd"
 )
 
 type clientFactory struct {
