@@ -524,13 +524,13 @@ func TestValidateClusterAPIObjectsOutput(t *testing.T) {
 			}
 
 			m := &v1alpha1.Machine{}
-			err = c.Get(context.TODO(), client.ObjectKey{Name: machine1.Name, Namespace: m.Namespace}, m)
+			err = c.Get(context.TODO(), client.ObjectKey{Name: machine1.Name, Namespace: testcase.namespace}, m)
 			if err != nil {
 				t.Fatalf("%v", err)
 			}
 			fmt.Printf("a machine1 - %s %v %v\n", machine1.Name, m.Status.NodeRef, m.Generation)
 
-			err = c.Get(context.TODO(), client.ObjectKey{Name: machine2.Name, Namespace: m.Namespace}, m)
+			err = c.Get(context.TODO(), client.ObjectKey{Name: machine2.Name, Namespace: testcase.namespace}, m)
 			if err != nil {
 				t.Fatalf("%v", err)
 			}
