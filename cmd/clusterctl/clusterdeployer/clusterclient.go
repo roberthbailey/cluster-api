@@ -277,7 +277,7 @@ func (c *clusterClient) UpdateClusterObjectEndpoint(masterIP string) error {
 			Host: masterIP,
 			Port: apiServerPort,
 		})
-	_, err = c.clientSet.ClusterV1alpha1().Clusters(apiv1.NamespaceDefault).UpdateStatus(cluster)
+	_, err = c.clientSet.ClusterV1alpha1().Clusters(apiv1.NamespaceDefault).Update(cluster)
 	return err
 }
 
