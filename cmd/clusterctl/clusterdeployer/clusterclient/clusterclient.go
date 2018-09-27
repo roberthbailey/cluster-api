@@ -407,7 +407,7 @@ func (c *client) UpdateClusterObjectEndpoint(masterIP, clusterName, namespace st
 			Host: masterIP,
 			Port: apiServerPort,
 		})
-	_, err = c.clientSet.ClusterV1alpha1().Clusters(namespace).UpdateStatus(cluster)
+	_, err = c.clientSet.ClusterV1alpha1().Clusters(namespace).Update(cluster)
 	return err
 }
 
