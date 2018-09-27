@@ -21,18 +21,11 @@ import (
 
 	"k8s.io/api/core/v1"
 	tcmd "k8s.io/client-go/tools/clientcmd"
-<<<<<<< HEAD:clusterctl/cmd/delete_cluster.go
-	"sigs.k8s.io/cluster-api/clusterctl/clusterdeployer"
-	"sigs.k8s.io/cluster-api/clusterctl/clusterdeployer/bootstrap/minikube"
-	"sigs.k8s.io/cluster-api/clusterctl/clusterdeployer/clusterclient"
-	"sigs.k8s.io/cluster-api/clusterctl/providercomponents"
-	"sigs.k8s.io/cluster-api/pkg/clientcmd"
-=======
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/clientcmd"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer/bootstrap/minikube"
+	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer/clusterclient"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/providercomponents"
->>>>>>> Rebase as CRD:cmd/clusterctl/cmd/delete_cluster.go
 
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"

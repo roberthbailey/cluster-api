@@ -282,12 +282,6 @@ func (r *ReconcileMachineDeployment) MachineSetToDeployments(o handler.MapObject
 		result = append(result, reconcile.Request{
 			NamespacedName: client.ObjectKey{Namespace: md.Namespace, Name: md.Name}})
 	}
-	if _, queueExists := c.informers.WorkerQueues["MachineDeployment"]; !queueExists {
-		glog.V(2).Infof("MachineDeployment queue does not exist, requing after %v", requeueAfterWhenQueueAbsent)
-		time.Sleep(requeueAfterWhenQueueAbsent)
-		c.enqueue(d)
-		return
-	}
 
 	return result
 }

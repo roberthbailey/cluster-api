@@ -25,6 +25,8 @@ import (
 
 	"github.com/onsi/gomega"
 
+	"fmt"
+
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -412,7 +414,7 @@ func TestValidateClusterAPIObjectsOutput(t *testing.T) {
 	// Setup the Manager and Controller.
 	mgr, err := manager.New(cfg, manager.Options{})
 	g.Expect(err).NotTo(gomega.HaveOccurred())
-	c, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme(), Mapper: mgr.GetRESTMapper()})
+	c, err := client.New(cfg, client.Options{Scheme: mgr.GetScheme(), Mapper: mgr.GetRESTMapper()})
 	g.Expect(err).ShouldNot(gomega.HaveOccurred())
 	defer close(StartTestManager(mgr, g))
 
@@ -520,16 +522,54 @@ func TestValidateClusterAPIObjectsOutput(t *testing.T) {
 			if err := c.Get(context.TODO(), types.NamespacedName{Name: testMachine1Name, Namespace: testcase.namespace}, &machine1); err != nil {
 				t.Fatalf("Unable to get machine 1: %v", err)
 			}
+
+			m := &v1alpha1.Machine{}
+			err = c.Get(context.TODO(), client.ObjectKey{Name: machine1.Name, Namespace: m.Namespace}, m)
+			if err != nil {
+				t.Fatalf("%v", err)
+			}
+			fmt.Printf("a machine1 - %s %v %v\n", machine1.Name, m.Status.NodeRef, m.Generation)
+
+			err = c.Get(context.TODO(), client.ObjectKey{Name: machine2.Name, Namespace: m.Namespace}, m)
+			if err != nil {
+				t.Fatalf("%v", err)
+			}
+			fmt.Printf("a machine2 - %s %v %v\n", machine2.Name, m.Status.NodeRef, m.Generation)
+
 			machine1.Status = testcase.machine1Status
 			if err := c.Update(context.TODO(), &machine1); err != nil {
 				t.Fatalf("Unable to update machine 1 with status: %v", err)
 			}
+			err = c.Get(context.TODO(), client.ObjectKey{Name: testMachine1Name, Namespace: testcase.namespace}, &machine1)
+			g.Expect(err).NotTo(gomega.HaveOccurred())
+			fmt.Printf("pwittroc - machine1 ref - %v\n", machine1.Status.NodeRef)
+
 			if err := c.Get(context.TODO(), types.NamespacedName{Name: testMachine2Name, Namespace: testcase.namespace}, &machine2); err != nil {
 				t.Fatalf("Unable to get machine 2: %v", err)
 			}
 			machine2.Status = testcase.machine2Status
 			if err := c.Update(context.TODO(), &machine2); err != nil {
 				t.Fatalf("Unable to update machine 2 with status: %v", err)
+			}
+
+			err = c.Get(context.TODO(), client.ObjectKey{Name: machine1.Name, Namespace: m.Namespace}, m)
+			if err != nil {
+				t.Fatalf("%v", err)
+			}
+			fmt.Printf("b machine1 - %s %v %v\n", machine1.Name, m.Status.NodeRef, m.Generation)
+
+			err = c.Get(context.TODO(), client.ObjectKey{Name: machine2.Name, Namespace: m.Namespace}, m)
+			if err != nil {
+				t.Fatalf("%v", err)
+			}
+			fmt.Printf("b machine2 - %s %v %v\n", machine2.Name, m.Status.NodeRef, m.Generation)
+
+			machines := &v1alpha1.MachineList{}
+			c.List(context.TODO(), &client.ListOptions{Namespace: testcase.namespace}, machines)
+			for _, m := range machines.Items {
+				fmt.Printf("t1 - machine item - %s %v %v\n", m.Name, m.Status.NodeRef, m.Generation)
+				c.Get(context.TODO(), client.ObjectKey{Name: m.Name, Namespace: m.Namespace}, &m)
+				fmt.Printf("2 - machine item - %s %v %v\n", m.Name, m.Status.NodeRef, m.Generation)
 			}
 
 			var output bytes.Buffer

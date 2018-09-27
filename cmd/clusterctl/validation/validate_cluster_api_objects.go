@@ -43,7 +43,7 @@ func ValidateClusterAPIObjects(w io.Writer, c client.Client, clusterName string,
 	}
 
 	machines := &clusterv1alpha1.MachineList{}
-	if err := c.List(context.TODO(), &client.ListOptions{Namespace: namespace}, machines); err != nil {
+	if err := c.List(context.TODO(), client.InNamespace(namespace), machines); err != nil {
 		return fmt.Errorf("failed to get the machines from the apiserver in namespace %q: %v", namespace, err)
 	}
 

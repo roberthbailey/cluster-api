@@ -23,16 +23,10 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
-<<<<<<< HEAD:clusterctl/cmd/create_cluster.go
-	"sigs.k8s.io/cluster-api/clusterctl/clusterdeployer"
-	"sigs.k8s.io/cluster-api/clusterctl/clusterdeployer/bootstrap/existing"
-	"sigs.k8s.io/cluster-api/clusterctl/clusterdeployer/bootstrap/minikube"
-	"sigs.k8s.io/cluster-api/clusterctl/clusterdeployer/clusterclient"
-=======
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer/bootstrap/existing"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer/bootstrap/minikube"
->>>>>>> Rebase as CRD:cmd/clusterctl/cmd/create_cluster.go
+	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer/clusterclient"
 	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/util"

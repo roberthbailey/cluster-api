@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/cluster-api/clusterctl/clusterdeployer/clusterclient"
+	"sigs.k8s.io/cluster-api/cmd/clusterctl/clusterdeployer/clusterclient"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/cluster-api/pkg/util"
 
@@ -296,84 +296,30 @@ func (d *ClusterDeployer) saveProviderComponentsToCluster(factory ProviderCompon
 	return nil
 }
 
-<<<<<<< HEAD:clusterctl/clusterdeployer/clusterdeployer.go
 func (d *ClusterDeployer) applyClusterAPIStack(client clusterclient.Client, namespace string) error {
-	glog.Info("Applying Cluster API APIServer")
-	err := d.applyClusterAPIApiserver(client, namespace)
-	if err != nil {
-		return fmt.Errorf("unable to apply cluster apiserver in namespace %v: %v", namespace, err)
-	}
-
-	glog.Info("Applying Cluster API Provider Components")
-	err = d.applyClusterAPIControllers(client, namespace)
-	if err != nil {
-=======
-func (d *ClusterDeployer) applyClusterAPIStack(client ClusterClient) error {
 	glog.Info("Applying Cluster API Provider Components")
 	if err := client.Apply(d.providerComponents); err != nil {
->>>>>>> Rebase as CRD:cmd/clusterctl/clusterdeployer/clusterdeployer.go
 		return fmt.Errorf("unable to apply cluster api controllers: %v", err)
 	}
 
 	return client.WaitForClusterV1alpha1Ready()
 }
 
-<<<<<<< HEAD:clusterctl/clusterdeployer/clusterdeployer.go
 func (d *ClusterDeployer) applyClusterAPIStackWithPivoting(client, source clusterclient.Client, namespace string) error {
-	glog.Info("Applying Cluster API APIServer")
-	err := d.applyClusterAPIApiserver(client, namespace)
-	if err != nil {
-		return fmt.Errorf("unable to apply cluster api apiserver: %v", err)
-	}
-
-	glog.Info("Pivoting Cluster API objects from bootstrap to target cluster.")
-	err = pivotNamespace(source, client, namespace)
-	if err != nil {
-		return fmt.Errorf("unable to pivot cluster API objects: %v", err)
-	}
-
-	glog.Info("Applying Cluster API Provider Components.")
-	err = d.applyClusterAPIControllers(client, namespace)
-	if err != nil {
-		return fmt.Errorf("unable to apply cluster api controllers: %v", err)
-	}
-
-	return nil
-}
-
-func (d *ClusterDeployer) applyClusterAPIApiserver(client clusterclient.Client, namespace string) error {
-	yaml, err := deployer.GetApiServerYamlForNamespace(namespace)
-	if err != nil {
-		return fmt.Errorf("unable to generate apiserver yaml: %v", err)
-	}
-
-	err = client.Apply(yaml)
-	if err != nil {
-		return fmt.Errorf("unable to apply apiserver yaml: %v", err)
-	}
-	return client.WaitForClusterV1alpha1Ready()
-}
-
-func (d *ClusterDeployer) applyClusterAPIControllers(client clusterclient.Client, namespace string) error {
-	return client.Apply(d.providerComponents)
-}
-
-=======
-func (d *ClusterDeployer) applyClusterAPIStackWithPivoting(client ClusterClient, source ClusterClient) error {
 	glog.Info("Applying Cluster API Provider Components")
 	if err := client.Apply(d.providerComponents); err != nil {
 		return fmt.Errorf("unable to apply cluster api controllers: %v", err)
 	}
 
 	glog.Info("Pivoting Cluster API objects from bootstrap to target cluster.")
-	if err := pivot(source, client); err != nil {
+	err := pivotNamespace(source, client, namespace)
+	if err != nil {
 		return fmt.Errorf("unable to pivot cluster API objects: %v", err)
 	}
 
 	return nil
 }
 
->>>>>>> Rebase as CRD:cmd/clusterctl/clusterdeployer/clusterdeployer.go
 func (d *ClusterDeployer) writeKubeconfig(kubeconfig string, kubeconfigOutput string) error {
 	const fileMode = 0666
 	os.Remove(kubeconfigOutput)
