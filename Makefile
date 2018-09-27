@@ -6,7 +6,8 @@ all: test manager clusterctl
 
 # Run tests
 test: generate fmt vet manifests
-	go test -v -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
+	go test -v -tags=integration ./pkg/... ./cmd/...
+#	go test -v -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
 
 # Build manager binary
 manager: generate fmt vet
